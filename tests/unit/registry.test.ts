@@ -1431,17 +1431,19 @@ void describe('BackgroundTaskRegistry', () => {
     }
   });
 
-  void it('enforces the admission-owned deadline while Git is running', async () => {
+  void it('enforces the admission-owned deadline while Git is running', async (t) => {
     if (process.platform === 'win32') return;
     const gitChild = new FakeChild(9101);
     const gitSignals: NodeJS.Signals[] = [];
     let gitSpawns = 0;
+    const enteredGit = deferred<void>();
     const h = await createHarness({
       modelRegistry: oauthRegistry(),
       taskAdmissionTimeoutMs: 20,
       attestedGitKillGraceMs: 5,
       attestedGitSpawn: (_command, _args, options) => {
         gitSpawns += 1;
+        enteredGit.resolve(undefined);
         assert.equal(options.detached, process.platform !== 'win32');
         return gitChild;
       },
@@ -1452,6 +1454,9 @@ void describe('BackgroundTaskRegistry', () => {
       },
     });
     try {
+      // Let asynchronous filesystem preflight finish before advancing the deadline.
+      // A real 20ms clock can expire before Git spawns on a loaded test runner.
+      t.mock.timers.enable({ apis: ['Date', 'setTimeout'], now: Date.now() });
       const start = h.registry.startAttestedPiTask(h.ctx, {
         name: 'deadline Git admission',
         provider: 'openai-codex',
@@ -1459,11 +1464,15 @@ void describe('BackgroundTaskRegistry', () => {
         prompt: 'write report.md',
         reportPath: 'report.md',
       });
-      await assert.rejects(start, (error: unknown) => {
+      const rejected = assert.rejects(start, (error: unknown) => {
         if (typeof error !== 'object' || error === null) return false;
         const code = Reflect.get(error, 'code');
         return code === 'pi_background_tasks_admission_timeout' || code === 'attested_git_timeout';
       });
+      await enteredGit.promise;
+      t.mock.timers.tick(20);
+      t.mock.timers.tick(5);
+      await rejected;
       await h.registry.waitForTaskAdmissions();
       assert.equal(gitSpawns, 1);
       assert.deepEqual(gitSignals, ['SIGTERM', 'SIGKILL']);
@@ -1471,6 +1480,7 @@ void describe('BackgroundTaskRegistry', () => {
       assert.equal(h.children.length, 0, 'deadline preflight must not spawn Pi');
       assert.deepEqual(await filesBelow(join(h.cwd, '.pi', 'tasks')), []);
     } finally {
+      t.mock.timers.reset();
       h.registry.setShuttingDown(true);
       await cleanup(h.root);
     }

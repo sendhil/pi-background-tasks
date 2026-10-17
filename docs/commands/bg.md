@@ -45,7 +45,7 @@ Inherited Nu, fish, csh, and unknown names are reported as `user-non-posix`, not
 
 ## Lifecycle
 
-The command returns after the child process is spawned and reports task id, output path, and command. Terminal statuses are exactly `running`, `completed`, `failed`, or `killed`. By default reload kills it. With `--survive-reload`, a real same-process reload claims the same live child/PID/id/nonce/path and keeps output, status, kill, absolute timeout, cumulative output cap, and one completion delivery working. New/resume/fork/clone/quit, extension removal without a claimant, crash, and process restart do not survive. A finished footer badge remains visible until that task's detail view is opened or [`/bg-clear`](bg-clear.md) marks unseen finished tasks seen.
+The command returns after the child process is spawned and reports task id, output path, and command. Terminal statuses are exactly `running`, `completed`, `failed`, or `killed`. By default reload kills it. With `--survive-reload`, a real same-process reload claims the same live child/PID/id/nonce/path and keeps output, status, kill, absolute timeout, cumulative output cap, and one completion delivery working. New/resume/fork/clone/quit, extension removal without a claimant, crash, and process restart do not survive. An unseen failure keeps its footer badge until that task's detail view is opened or [`/bg-clear`](bg-clear.md) marks unseen finished tasks seen. Successful and stopped tasks remain in history without footer badges.
 
 ## Examples
 

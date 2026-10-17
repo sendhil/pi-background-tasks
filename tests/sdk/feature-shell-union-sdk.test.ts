@@ -52,7 +52,6 @@ const PROCESS_COMMANDS = [
   'bg',
   'bg-clear',
   'bg-tasks',
-  'bg-update',
   'jobs',
   'kill',
   'logs',

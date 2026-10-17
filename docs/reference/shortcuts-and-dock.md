@@ -21,11 +21,11 @@ covers_sources: []
 
 `PI_BG_DOCK_SHORTCUT` selects exactly one dock binding:
 
-| Value | Registered dock key | Footer hint | Default |
-|---|---|---|---|
-| `shift+down` | `Shift+Down` | `Shift↓` | yes |
-| `ctrl+alt+b` | `Ctrl+Alt+B` | `CtrlAltB` | no |
-| `off` | none | `/tasks` | no |
+| Value | Registered dock key | Default |
+|---|---|---|
+| `shift+down` | `Shift+Down` | yes |
+| `ctrl+alt+b` | `Ctrl+Alt+B` | no |
+| `off` | none | no |
 
 Only the configured literal key is registered, so selecting the alternate key or `off` avoids a Shift+Down conflict with another extension rather than merely hiding a label. Invalid, blank, differently cased, or whitespace-bearing values fail extension load with `pi_bg_config_invalid`; they do not fall back to Shift+Down. The setting is re-read on `/reload`.
 
@@ -33,26 +33,17 @@ Only the configured literal key is registered, so selecting the alternate key or
 
 ## Footer states
 
-The footer appears when there are running tasks, unseen finished tasks, or an update segment. Count labels are:
-
-- `running` for active tasks;
-- `failed` for status `failed`;
-- `stopped` for status `killed`;
-- `done` for status `completed`.
-
-Examples:
+The footer shows running tasks and unseen failures only:
 
 ```text
-bg 1 running · Shift↓
-bg 1 running · CtrlAltB
-bg 1 running · /tasks
-bg 1 done · Shift↓ · /bg-clear
-bg 1 running · 1 failed · 1 stopped · 1 done · Shift↓ · /bg-clear
-bg 1 running · Shift↓ · ⬆ v999.0.0 /bg-update
-bg 1 running · focused
+bg 2 running
+bg 1 failed
+bg 2 running · 1 failed
 ```
 
-The `/bg-clear` hint is hidden while the dock is open, where the entry hint becomes `focused`. A finished task's badge is marked seen when its detail view opens; `/bg-clear` or `Ctrl+Alt+C` marks all currently unseen finished tasks seen. Merely opening the list view or closing the dock does not clear badges.
+Idle, successful, stopped, and already-seen failed tasks do not keep the footer visible. There are no persistent command/shortcut hints or update notices. Opening the dock does not change this policy. Task history and completion notifications remain available, including successful and stopped tasks.
+
+A failed task's badge clears when its detail view opens; `/bg-clear` or `Ctrl+Alt+C` marks all currently unseen finished tasks seen. Merely opening the list or closing the dock does not clear badges. Manager action help remains inside the dock.
 
 ## Dock entry points
 
@@ -76,7 +67,6 @@ The detail view follows a UI-only 128 KiB tail buffer, refreshes once per second
 
 - [`/bg-clear`](../commands/bg-clear.md)
 - [`/tasks` and `/bg-tasks`](../commands/task-manager.md)
-- [`/bg-update`](../commands/bg-update.md)
 - [Host UI and telemetry](../subsystems/host-ui-and-telemetry.md)
 
 ## Source ownership/reference

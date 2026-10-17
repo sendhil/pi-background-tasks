@@ -251,7 +251,6 @@ void describe('rpc', () => {
         'tasks',
         'bg-tasks',
         'bg-clear',
-        'bg-update',
       ])
         assert.ok(names.includes(name), name);
       await rpc.prompt(
@@ -316,15 +315,11 @@ void describe('rpc', () => {
     });
   });
 
-  void it('prints non-installing /bg-update instructions offline', async () => {
+  void it('does not expose a package updater command in RPC discovery', async () => {
     await withRpc(async (rpc) => {
-      const response = await rpc.prompt('/bg-update');
+      const response = await rpc.send({ type: 'get_commands' });
       assert.equal(field(response, 'success'), true);
-      await rpc.wait(
-        notifyWith(
-          /pi install npm:pi-background-tasks@latest[\s\S]*does not install or self-update/,
-        ),
-      );
+      assert.equal(commandNames(response).includes('bg-update'), false);
     });
   });
 

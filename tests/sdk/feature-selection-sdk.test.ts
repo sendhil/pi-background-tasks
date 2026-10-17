@@ -6,6 +6,7 @@ import { afterEach, describe, it } from 'node:test';
 import type { Context } from '@earendil-works/pi-ai';
 import {
   createAgentSession,
+  initTheme,
   createEventBus,
   DefaultResourceLoader,
   ModelRuntime,
@@ -44,7 +45,6 @@ const PROCESS_COMMANDS = [
   'bg',
   'bg-clear',
   'bg-tasks',
-  'bg-update',
   'jobs',
   'kill',
   'logs',
@@ -1057,11 +1057,12 @@ void describe('C1a feature selection and dock configuration', { concurrency: fal
     }
   });
 
-  void it('derives the actual footer hint from default, alternate, and off shortcut config', async () => {
+  void it('keeps the footer quiet for default, alternate, and off shortcut config', async () => {
+    initTheme('dark', false);
     for (const testCase of [
-      { shortcut: undefined, expected: 'Shift↓' },
-      { shortcut: 'ctrl+alt+b', expected: 'CtrlAltB' },
-      { shortcut: 'off', expected: '/tasks' },
+      { shortcut: undefined },
+      { shortcut: 'ctrl+alt+b' },
+      { shortcut: 'off' },
     ] as const) {
       configure('process', testCase.shortcut);
       const { session } = await makeSession();
@@ -1083,10 +1084,8 @@ void describe('C1a feature selection and dock configuration', { concurrency: fal
           .find((command) => command.invocationName === 'jobs');
         assert.ok(jobs);
         await jobs.handler('', session.extensionRunner.createCommandContext());
-        assert.ok(
-          statuses.some((status) => status.includes(testCase.expected)),
-          `footer should include ${testCase.expected}: ${statuses.join(' | ')}`,
-        );
+        assert.equal(statuses.at(-1)?.replace(/\x1b\[[0-9;]*m/g, ''), 'bg 1 running');
+        assert.ok(statuses.every((status) => !/Shift↓|CtrlAltB|\/tasks|focused/.test(status)));
         const details = Reflect.get(result, 'details') as { task?: { id?: string } } | undefined;
         const taskId = details?.task?.id;
         assert.equal(typeof taskId, 'string');

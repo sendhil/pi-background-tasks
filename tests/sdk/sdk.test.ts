@@ -8,6 +8,7 @@ import { tmpdir } from 'node:os';
 import { createServer } from 'node:http';
 import {
   ModelRuntime,
+  initTheme,
   createAgentSession,
   createEventBus,
   DefaultResourceLoader,
@@ -32,7 +33,6 @@ import {
   type BackgroundTaskExtensionResponse,
   type BackgroundTaskExtensionTerminal,
 } from '../../src/core/extension-api.js';
-import { parsePackageInfo } from '../../src/core/update-check.js';
 import backgroundTasksExtension from '../../src/extension.js';
 
 const extensionPath = resolve('extensions/background-tasks.ts');
@@ -416,16 +416,31 @@ function makeStatusUi(
   baseUi: ExtensionUIContext,
   statuses: Array<string | undefined>,
   notifications: UiNotification[],
+  roles: Array<[string, string]> = [],
 ): ExtensionUIContext {
+  initTheme('dark', false);
   return {
     ...baseUi,
+    theme: new Proxy(baseUi.theme, {
+      get(target, key, receiver) {
+        if (key === 'fg') {
+          return (role: Parameters<typeof target.fg>[0], text: string) => {
+            roles.push([role, text]);
+            return target.fg(role, text);
+          };
+        }
+        return Reflect.get(target, key, receiver);
+      },
+    }),
     notify: (message, type) => {
       const notification: UiNotification = { message };
       if (type !== undefined) notification.type = type;
       notifications.push(notification);
     },
     setStatus: (_key, text) => {
-      statuses.push(text);
+      assert.equal(_key, 'background-tasks');
+      assert.doesNotMatch(text ?? '', /\x1b\[48;|\x1b\[38;2;11;70;110m/);
+      statuses.push(text === undefined ? undefined : text.replace(/\x1b\[[0-9;]*m/g, ''));
     },
   };
 }
@@ -433,8 +448,10 @@ function makeStatusUi(
 async function startRegistry(
   payload: string,
   status = 200,
-): Promise<{ url: string; close: () => Promise<void> }> {
-  const server = createServer((_req, res) => {
+): Promise<{ url: string; requests: string[]; close: () => Promise<void> }> {
+  const requests: string[] = [];
+  const server = createServer((req, res) => {
+    requests.push(req.url ?? '');
     res.writeHead(status, { 'content-type': 'application/json' });
     res.end(payload);
   });
@@ -450,6 +467,7 @@ async function startRegistry(
   );
   return {
     url: `http://127.0.0.1:${String(address.port)}`,
+    requests,
     close: () =>
       new Promise<void>((resolve) => {
         server.close(() => {
@@ -459,23 +477,7 @@ async function startRegistry(
   };
 }
 
-async function renderFooterViaJobs(session: AgentSession): Promise<void> {
-  const jobs = session.extensionRunner
-    .getRegisteredCommands()
-    .find((cmd) => cmd.invocationName === 'jobs');
-  assert.ok(jobs);
-  await jobs.handler('', session.extensionRunner.createCommandContext());
-}
-
 const UPDATE_ENV_KEYS = ['PI_OFFLINE', 'PI_BG_DISABLE_UPDATE_CHECK', 'PI_BG_REGISTRY_URL'] as const;
-
-type EnvOverrides = Record<string, string>;
-
-interface SettledFooterOptions {
-  env: EnvOverrides;
-  registryPayload: string;
-  registryStatus?: number;
-}
 
 function git(cwd: string, args: string[]): void {
   const result = spawnSync('git', args, { cwd, encoding: 'utf8' });
@@ -498,41 +500,6 @@ function restoreEnvValue(key: string, value: string | undefined): void {
     return;
   }
   process.env[key] = value;
-}
-
-async function settledFooter(
-  options: SettledFooterOptions,
-): Promise<{ status: string | undefined; threw: boolean }> {
-  const saved = new Map<string, string | undefined>();
-  for (const key of UPDATE_ENV_KEYS) {
-    saved.set(key, process.env[key]);
-    restoreEnvValue(key, undefined);
-  }
-  for (const [key, value] of Object.entries(options.env)) process.env[key] = value;
-  const registry = await startRegistry(options.registryPayload, options.registryStatus);
-  process.env['PI_BG_REGISTRY_URL'] = registry.url;
-  const { session } = await harness();
-  const statuses: Array<string | undefined> = [];
-  const notifications: UiNotification[] = [];
-  session.extensionRunner.setUIContext(
-    makeStatusUi(session.extensionRunner.getUIContext(), statuses, notifications),
-  );
-  let threw = false;
-  try {
-    await session.extensionRunner.emit({ type: 'session_start', reason: 'startup' });
-    await new Promise((resolve) => setTimeout(resolve, 200));
-    await renderFooterViaJobs(session);
-  } catch {
-    threw = true;
-  } finally {
-    await session.extensionRunner.emit({ type: 'session_shutdown', reason: 'quit' });
-    session.dispose();
-    await registry.close();
-    for (const key of UPDATE_ENV_KEYS) {
-      restoreEnvValue(key, saved.get(key));
-    }
-  }
-  return { status: statuses.at(-1), threw };
 }
 
 void describe('sdk', () => {
@@ -562,7 +529,6 @@ void describe('sdk', () => {
         'tasks',
         'bg-tasks',
         'bg-clear',
-        'bg-update',
       ])
         assert.ok(cmds.includes(cmd), cmd);
       assert.ok(session.extensionRunner.getMessageRenderer('background-task-notification'));
@@ -1497,7 +1463,7 @@ console.log(JSON.stringify({ type: "message_end", message: secondMessage }));
     },
   );
 
-  void it('keeps finished footer notices until explicit /bg-clear', async () => {
+  void it('hides successful footer notices without acknowledging them before explicit /bg-clear', async () => {
     const { session } = await harness();
     const statuses: Array<string | undefined> = [];
     const notifications: UiNotification[] = [];
@@ -1514,7 +1480,7 @@ console.log(JSON.stringify({ type: "message_end", message: secondMessage }));
       });
       await wait(session, taskFromResult(done).id);
       await new Promise((resolve) => setTimeout(resolve, 20));
-      assert.match(statuses.at(-1) ?? '', /bg 1 done · Shift↓ · \/bg-clear/);
+      assert.equal(statuses.at(-1), undefined);
 
       const shortcuts = session.extensionRunner.getShortcuts({});
       assert.ok(shortcuts.has('ctrl+alt+c'));
@@ -1542,9 +1508,9 @@ console.log(JSON.stringify({ type: "message_end", message: secondMessage }));
       });
       await wait(session, taskFromResult(secondDone).id);
       await new Promise((resolve) => setTimeout(resolve, 20));
-      assert.match(statuses.at(-1) ?? '', /1 running · 1 done · Shift↓ · \/bg-clear/);
+      assert.equal(statuses.at(-1), 'bg 1 running');
       await clearCommand.handler('', session.extensionRunner.createCommandContext());
-      assert.match(statuses.at(-1) ?? '', /bg 1 running · Shift↓/);
+      assert.equal(statuses.at(-1), 'bg 1 running');
       assert.doesNotMatch(statuses.at(-1) ?? '', /done|\/bg-clear/);
       await exec(session, 'bg_kill', { taskId: taskFromResult(running).id });
     } finally {
@@ -1553,12 +1519,13 @@ console.log(JSON.stringify({ type: "message_end", message: secondMessage }));
     }
   });
 
-  void it('reports failed/stopped/done footer combinations and focused dock status', async () => {
+  void it('shows only running and unseen failed counts even while the dock is open', async () => {
     const { session } = await harness();
     const statuses: Array<string | undefined> = [];
     const notifications: UiNotification[] = [];
+    const roles: Array<[string, string]> = [];
     session.extensionRunner.setUIContext(
-      makeStatusUi(session.extensionRunner.getUIContext(), statuses, notifications),
+      makeStatusUi(session.extensionRunner.getUIContext(), statuses, notifications, roles),
     );
     try {
       const failed = await exec(session, 'bg_run', {
@@ -1588,7 +1555,7 @@ console.log(JSON.stringify({ type: "message_end", message: secondMessage }));
       });
       await wait(session, taskFromResult(done).id);
       await new Promise((resolve) => setTimeout(resolve, 30));
-      assert.match(statuses.at(-1) ?? '', /1 failed · 1 stopped · 1 done · Shift↓ · \/bg-clear/);
+      assert.equal(statuses.at(-1), 'bg 1 failed');
 
       const running = await exec(session, 'bg_run', {
         isAgent: false,
@@ -1598,22 +1565,27 @@ console.log(JSON.stringify({ type: "message_end", message: secondMessage }));
         triggerOnCompletion: false,
       });
       await new Promise((resolve) => setTimeout(resolve, 30));
-      assert.match(
-        statuses.at(-1) ?? '',
-        /1 running · 1 failed · 1 stopped · 1 done · Shift↓ · \/bg-clear/,
-      );
+      assert.equal(statuses.at(-1), 'bg 1 running · 1 failed');
+      assert.deepEqual(roles.slice(-4), [
+        ['dim', 'bg '],
+        ['dim', '1 running'],
+        ['dim', ' · '],
+        ['error', '1 failed'],
+      ]);
       const shortcuts = session.extensionRunner.getShortcuts({});
       const shiftDown = shortcuts.get('shift+down');
       assert.ok(shiftDown, 'Shift+Down shortcut should be registered');
       await shiftDown.handler(session.extensionRunner.createContext());
-      assert.ok(
-        statuses.some(
-          (status) =>
-            status?.includes('bg 1 running · 1 failed · 1 stopped · 1 done · focused') ?? false,
-        ),
-      );
+      assert.equal(statuses.at(-1), 'bg 1 running · 1 failed');
       await exec(session, 'bg_kill', { taskId: taskFromResult(running).id });
       assert.equal(notifications.length, 0);
+      const clearCommand = session.extensionRunner
+        .getRegisteredCommands()
+        .find((command) => command.invocationName === 'bg-clear');
+      assert.ok(clearCommand);
+      await clearCommand.handler('', session.extensionRunner.createCommandContext());
+      assert.equal(statuses.at(-1), undefined);
+      assert.match(notifications.at(-1)?.message ?? '', /Cleared 4 finished/);
     } finally {
       await session.extensionRunner.emit({ type: 'session_shutdown', reason: 'quit' });
       session.dispose();
@@ -1707,15 +1679,19 @@ console.log(JSON.stringify({ type: "message_end", message: secondMessage }));
     session.dispose();
   });
 
-  void it('surfaces an update-available footer segment and registers a non-installing /bg-update command', async () => {
+  void it('never requests package updates or shows an idle footer without offline or disable flags', async (t) => {
+    const fetchCalls: string[] = [];
+    t.mock.method(globalThis, 'fetch', async (input: Parameters<typeof fetch>[0]) => {
+      fetchCalls.push(String(input));
+      return new Response(JSON.stringify({ version: '999.0.0' }));
+    });
+    const warnings = t.mock.method(console, 'error', () => undefined);
     const saved = new Map<string, string | undefined>();
     for (const key of UPDATE_ENV_KEYS) {
       saved.set(key, process.env[key]);
       restoreEnvValue(key, undefined);
     }
-    const registry = await startRegistry(
-      JSON.stringify({ name: 'pi-background-tasks', version: '999.0.0' }),
-    );
+    const registry = await startRegistry(JSON.stringify({ version: '999.0.0' }));
     process.env['PI_BG_REGISTRY_URL'] = registry.url;
     const { session } = await harness();
     const statuses: Array<string | undefined> = [];
@@ -1724,82 +1700,28 @@ console.log(JSON.stringify({ type: "message_end", message: secondMessage }));
       makeStatusUi(session.extensionRunner.getUIContext(), statuses, notifications),
     );
     try {
-      const commands = session.extensionRunner
-        .getRegisteredCommands()
-        .map((cmd) => cmd.invocationName);
-      assert.ok(commands.includes('bg-update'), 'bg-update command must be registered');
-
+      assert.equal(process.env['PI_OFFLINE'], undefined);
+      assert.equal(process.env['PI_BG_DISABLE_UPDATE_CHECK'], undefined);
       await session.extensionRunner.emit({ type: 'session_start', reason: 'startup' });
-      let footer: string | undefined;
-      for (let i = 0; i < 50; i++) {
-        await renderFooterViaJobs(session);
-        footer = statuses.at(-1);
-        if (footer?.includes('⬆ v999.0.0 /bg-update')) break;
-        await new Promise((resolve) => setTimeout(resolve, 20));
-      }
-      assert.match(footer ?? '', /bg \u2b06 v999\.0\.0 \/bg-update/);
-
-      // Append-to-active-footer path: segment trails the running/entry-hint status.
-      const running = await exec(session, 'bg_run', {
-        isAgent: false,
-        name: 'Update Footer Running',
-        command: `node -e ${JSON.stringify('setTimeout(() => {}, 10000)')}`,
-        notifyOnCompletion: false,
-        triggerOnCompletion: false,
-      });
-      await renderFooterViaJobs(session);
-      assert.match(statuses.at(-1) ?? '', /bg 1 running · Shift↓ · \u2b06 v999\.0\.0 \/bg-update/);
-      await exec(session, 'bg_kill', { taskId: taskFromResult(running).id });
-
-      const updateCommand = session.extensionRunner
-        .getRegisteredCommands()
-        .find((cmd) => cmd.invocationName === 'bg-update');
-      assert.ok(updateCommand);
-      await updateCommand.handler('', session.extensionRunner.createCommandContext());
-      const message = notifications.at(-1)?.message ?? '';
-      assert.match(message, /pi install npm:pi-background-tasks@latest/);
-      assert.match(message, /pi install npm:pi-background-tasks@999\.0\.0/);
-      assert.match(message, /pi install git:github\.com\/ismailsaleekh\/pi-background-tasks@main/);
-      assert.match(message, /first verify the tag exists/);
-      assert.doesNotMatch(message, /pi-background-tasks@v999\.0\.0/);
-      assert.match(message, /999\.0\.0 is the latest published version/);
-      assert.match(message, /does not install or self-update/);
+      // Cover startup's asynchronous lookup and at least one ordinary status tick.
+      await new Promise((resolve) => setTimeout(resolve, 1200));
+      assert.deepEqual(registry.requests, [], 'startup must not query the package registry');
+      assert.deepEqual(fetchCalls, [], 'no default or overridden registry fetch is allowed');
+      assert.equal(warnings.mock.callCount(), 0, 'no updater startup warnings');
+      assert.ok(statuses.length > 0, 'startup must actually render the footer');
+      assert.ok(statuses.every((status) => status === undefined));
+      assert.deepEqual(notifications, []);
+      assert.equal(
+        session.extensionRunner.getRegisteredCommands().some(
+          (command) => command.invocationName === 'bg-update',
+        ),
+        false,
+      );
     } finally {
       await session.extensionRunner.emit({ type: 'session_shutdown', reason: 'quit' });
       session.dispose();
       await registry.close();
-      for (const [key, value] of saved) {
-        restoreEnvValue(key, value);
-      }
+      for (const [key, value] of saved) restoreEnvValue(key, value);
     }
-  });
-
-  void it('shows no update segment when opted out, offline, already current, or the registry fails, and never throws', async () => {
-    const newer = JSON.stringify({ version: '999.0.0' });
-    const disabled = await settledFooter({
-      env: { PI_BG_DISABLE_UPDATE_CHECK: '1' },
-      registryPayload: newer,
-    });
-    assert.equal(disabled.threw, false);
-    assert.doesNotMatch(disabled.status ?? '', /bg-update/);
-
-    const offline = await settledFooter({ env: { PI_OFFLINE: '1' }, registryPayload: newer });
-    assert.equal(offline.threw, false);
-    assert.doesNotMatch(offline.status ?? '', /bg-update/);
-
-    const packageInfoPayload = parseJsonText(
-      await readFile(new URL('../../package.json', import.meta.url), 'utf8'),
-    );
-    const currentVersion = parsePackageInfo(packageInfoPayload).version ?? '0.0.0';
-    const current = await settledFooter({
-      env: {},
-      registryPayload: JSON.stringify({ version: currentVersion }),
-    });
-    assert.equal(current.threw, false);
-    assert.doesNotMatch(current.status ?? '', /bg-update/);
-
-    const failure = await settledFooter({ env: {}, registryPayload: '{}', registryStatus: 500 });
-    assert.equal(failure.threw, false);
-    assert.doesNotMatch(failure.status ?? '', /bg-update/);
   });
 });

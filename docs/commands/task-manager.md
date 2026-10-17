@@ -37,7 +37,7 @@ Use the task manager when you want the host UI: select tasks, inspect a live out
 
 ## Lifecycle
 
-The manager is an overlay dock. Opening it sets the footer hint to `focused` and temporarily hides the `/bg-clear` hint; closing returns the footer to the configured `Shift↓`, `CtrlAltB`, or `/tasks` hint. `PI_BG_DOCK_SHORTCUT=off` disables only the key registration—both commands on this page continue to work. Opening a finished task's detail view marks that task seen. Merely opening the list or closing the dock does **not** clear other finished badges; use [`/bg-clear`](bg-clear.md) to clear them together.
+The manager is a theme-native overlay dock with a visible selection pointer and keyboard help. Opening or closing it does not add footer hints. `PI_BG_DOCK_SHORTCUT=off` disables only the key registration—both commands on this page continue to work. Opening a finished task's detail view marks that task seen. Merely opening the list or closing the dock does **not** clear other finished badges; use [`/bg-clear`](bg-clear.md) to clear them together.
 
 List view sorts tasks as running, failed, killed, then completed; within a status, newest terminal/start time appears first. Status labels shown in the UI are `running`, `error` for `failed`, `stopped` for `killed`, and `done` for `completed`.
 

@@ -24,7 +24,7 @@ Clear finished background task footer notices.
 
 ## When to use
 
-Use this after you have seen completed, failed, or killed task badges in the footer and want to remove those finished counts from the dock status.
+Use this to acknowledge unseen failures and remove their footer count. Successful and stopped tasks have no footer badges, but this command acknowledges them too.
 
 ## Defaults
 
@@ -32,7 +32,7 @@ No arguments. It only marks currently unseen finished tasks as seen.
 
 ## Lifecycle
 
-A finished task's footer badge is marked seen when its detail view opens. `/bg-clear` or the equivalent shortcut marks every currently unseen finished task seen at once. Merely opening the list view or closing the task manager does not clear badges. Running task counts remain visible after clearing finished notices.
+A finished task is marked seen when its detail view opens; only unseen failures have footer badges. `/bg-clear` or the equivalent shortcut marks every currently unseen finished task seen at once. Merely opening the list view or closing the task manager does not clear badges. Running task counts remain visible after clearing finished notices.
 
 ## Examples
 

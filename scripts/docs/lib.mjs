@@ -1051,27 +1051,6 @@ function collectRegistrationsInFunction(
     ) {
       return true;
     }
-    const directAccess = node.parent;
-    if (
-      ts.isPropertyAccessExpression(directAccess) &&
-      directAccess.expression === node &&
-      directAccess.name.text === 'dockShortcut' &&
-      ts.isCallExpression(directAccess.parent) &&
-      directAccess.parent.arguments.length === 1 &&
-      directAccess.parent.arguments[0] === directAccess
-    ) {
-      const callee = calleeIdentifier(directAccess.parent.expression);
-      const imported = callee && info.imports.get(callee.text);
-      const parserImport = [...info.imports.values()].find(
-        (candidate) => candidate.exported === 'parseBackgroundTasksConfig',
-      );
-      if (
-        imported?.exported === 'dockShortcutFooterHint' &&
-        parserImport?.rel === imported.rel
-      ) {
-        return true;
-      }
-    }
     let current = node;
     while (current.parent && current.parent !== fn) {
       const parent = current.parent;
@@ -3310,7 +3289,6 @@ function applyGeneratedRegionsToDoc(doc, codeFacts, coverage, docsModel, attesta
       const byDoc = {
         'docs/commands/bg.md': ['bg'],
         'docs/commands/bg-clear.md': ['bg-clear'],
-        'docs/commands/bg-update.md': ['bg-update'],
         'docs/commands/claude-cache.md': ['claude-cache'],
         'docs/commands/fusion.md': ['fusion'],
         'docs/commands/fusion-models.md': ['fusion-models'],

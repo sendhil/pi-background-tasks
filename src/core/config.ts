@@ -113,9 +113,3 @@ export function parseBackgroundTasksConfig(
   const dockShortcut = parseDockShortcut(env['PI_BG_DOCK_SHORTCUT']);
   return Object.freeze({ features, dockShortcut });
 }
-
-export function dockShortcutFooterHint(shortcut: PiBackgroundDockShortcut): string {
-  if (shortcut === 'shift+down') return 'Shift↓';
-  if (shortcut === 'ctrl+alt+b') return 'CtrlAltB';
-  return '/tasks';
-}

@@ -83,7 +83,7 @@ Fusion is a fixed workflow, not a free-form mode switch:
 ```json
 {
   "name": "Docs locator",
-  "prompt": "Find the docs that explain shell selection and update checks. Return exact file paths and a concise summary.",
+  "prompt": "Find the docs that explain shell selection and completion delivery. Return exact file paths and a concise summary.",
   "capability": "inspect",
   "extensionMode": "isolated"
 }

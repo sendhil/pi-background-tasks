@@ -113,7 +113,6 @@ void describe('docs package integration contract', () => {
         'command:bg',
         'command:bg-clear',
         'command:bg-tasks',
-        'command:bg-update',
         'command:jobs',
         'command:kill',
         'command:logs',
@@ -128,7 +127,7 @@ void describe('docs package integration contract', () => {
         'tool:bg_status',
       ].sort(),
     );
-    assert.equal(always.size, 16);
+    assert.equal(always.size, 15);
     const byFeature = new Map<string, ReadonlySet<string>>([
       ['delegate', new Set(['tool:bg_delegate'])],
       [
@@ -241,8 +240,10 @@ void describe('docs package integration contract', () => {
       text('docs/subsystems/delegation.md'),
       /best-effort durable write of `outcome\.json`/,
     );
-    assert.match(text('docs/subsystems/host-ui-and-telemetry.md'), /detail view is opened/);
-    assert.match(text('docs/subsystems/host-ui-and-telemetry.md'), /dock is closed/);
+    assert.match(text('docs/subsystems/host-ui-and-telemetry.md'), /detail view marks it seen/);
+    assert.match(text('docs/subsystems/host-ui-and-telemetry.md'), /running tasks and unseen failures/);
+    assert.match(text('docs/subsystems/host-ui-and-telemetry.md'), /without mutating either/);
+    assert.doesNotMatch(text('docs/subsystems/host-ui-and-telemetry.md'), /update-available|entry hint/);
     assert.doesNotMatch(
       text('docs/reference/shortcuts-and-dock.md'),
       /Opening or closing the dock does not clear them/,

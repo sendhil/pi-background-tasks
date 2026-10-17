@@ -8,6 +8,7 @@ import { visibleWidth } from '@earendil-works/pi-tui';
 import {
   BackgroundTasksManager,
   type BackgroundTaskForUi,
+  type TaskManagerTheme,
 } from '../../src/ui/background-tasks-manager.js';
 import { stripAnsi } from '../helpers/normalize.js';
 
@@ -98,6 +99,7 @@ function task(overrides: Partial<BackgroundTaskForUi> = {}): BackgroundTaskForUi
 function manager(
   options: Partial<ConstructorParameters<typeof BackgroundTasksManager>[3]> = {},
   tasks: BackgroundTaskForUi[] = [task()],
+  selectedTheme: TaskManagerTheme = theme,
 ) {
   let closed = false;
   let renders = 0;
@@ -110,7 +112,7 @@ function manager(
         renders++;
       },
     },
-    theme,
+    selectedTheme,
     () => {
       closed = true;
     },
@@ -527,4 +529,62 @@ void describe('BackgroundTasksManager component', () => {
       esc.instance.dispose();
     }
   });
+});
+
+void it('uses theme roles for chrome and selection without fixed RGB or background fill', () => {
+  const roleTheme: TaskManagerTheme = { fg: (role, text) => `<${role}>${text}</${role}>` };
+  const h = manager({}, [task()], roleTheme);
+  try {
+    const output = h.instance.render(120).join('\n');
+    assert.match(output, /<borderMuted>╭/);
+    assert.match(output, /<text> bg tasks focused/);
+    assert.match(output, /<accent>›<\/accent>/);
+    assert.doesNotMatch(output, /\x1b\[(?:38|48);2;/);
+  } finally {
+    h.instance.dispose();
+  }
+});
+
+void it('bounds Unicode rows and aligns frames at 40, 80 and 120 columns without color', () => {
+  const h = manager(
+    {},
+    [task({ name: '長い名前 👩‍💻 é '.repeat(30), status: 'failed' })],
+    { fg: (_role, text) => text },
+  );
+  try {
+    for (const width of [40, 80, 120]) {
+      const lines = h.instance.render(width);
+      assert.ok(lines.every((line) => visibleWidth(line) === Math.min(width, 118)));
+      assert.match(lines.join('\n'), /›/);
+      if (width >= 80) assert.match(lines.join('\n'), /error/);
+      h.instance.handleInput('\r');
+      assert.ok(
+        h.instance.render(width).every((line) => visibleWidth(line) === Math.min(width, 118)),
+      );
+      h.instance.handleInput('\x1b[D');
+    }
+  } finally {
+    h.instance.dispose();
+  }
+});
+
+void it('re-evaluates current theme roles while the manager remains open', () => {
+  let palette = 'light';
+  const roleTheme: TaskManagerTheme = { fg: (role, text) => `[${palette}:${role}]${text}` };
+  const h = manager({}, [task({ status: 'failed', name: 'Failure' })], roleTheme);
+  try {
+    for (const next of ['light', 'dark', 'system']) {
+      palette = next;
+      h.instance.invalidate();
+      const output = h.instance.render(120).join('\n');
+      assert.ok(output.includes(`[${next}:borderMuted]╭`));
+      assert.ok(output.includes(`[${next}:accent]›`));
+      assert.ok(output.includes(`[${next}:error]Failure`));
+      for (const other of ['light', 'dark', 'system'].filter((name) => name !== next)) {
+        assert.ok(!output.includes(`[${other}:`));
+      }
+    }
+  } finally {
+    h.instance.dispose();
+  }
 });

@@ -631,7 +631,6 @@ void describe('package', () => {
       '/tasks',
       '/bg-tasks',
       '/bg-clear',
-      '/bg-update',
       '/claude-cache',
       'bg_run',
       'bg_delegate',

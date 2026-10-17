@@ -29,7 +29,7 @@ Capabilities are independent except for the derived result surface:
 - `attribution` registers ambient parent-session Anthropic provider/hooks and `/claude-cache`.
 - `bg_result` is not a feature token. It is registered exactly once when `delegate` or `fusion` is enabled, and is absent when neither producer is enabled.
 
-Disabled package tools, commands, renderers, and shortcuts are absent from registration and discovery. Pi's registry rebuild drops stale active names that have no current definition; the package does not deactivate an unrelated extension tool merely because its name matches a disabled capability. `/tasks` and `/bg-tasks` are always available. With the dock shortcut off, the footer advertises `/tasks`; the alternate footer hint is `CtrlAltB`. `Ctrl+Alt+C` remains the terminal-dependent `/bg-clear` fallback in every configuration.
+Disabled package tools, commands, renderers, and shortcuts are absent from registration and discovery. Pi's registry rebuild drops stale active names that have no current definition; the package does not deactivate an unrelated extension tool merely because its name matches a disabled capability. `/tasks` and `/bg-tasks` are always available. The footer never advertises shortcut or command hints. `Ctrl+Alt+C` remains the terminal-dependent `/bg-clear` fallback in every configuration.
 
 Ambient attribution selection does not weaken package-owned isolated Anthropic children. Delegate, Fusion, and attested child argv always loads `extensions/anthropic-attribution-child.ts` before the child guard/governor, regardless of the parent `attribution` token.
 
@@ -49,18 +49,6 @@ Reload survival is a per-launch field/flag, not a global environment setting:
 - `/bg --survive-reload ...`
 
 Omitted/false keeps default kill-on-reload behavior. Survival is supported only for ordinary shell tasks across a real same-process Pi reload with the exact session id and canonical cwd. Agent, managed, delegate, Fusion, attested, EventBus-v1, new/resume/fork/clone/quit, crash, and process-restart paths do not opt in. The live execution retains its launch-time shell policy, timeout deadline, output cap, and cumulative bytes even if environment/config changes before reload; a dock rerun is new work and uses current configuration.
-
-## Update check
-
-At `session_start`, the extension performs a one-shot, time-boxed npm latest-version lookup. Failures are offline-safe: the footer simply shows no update segment.
-
-| Variable | Effect |
-|---|---|
-| `PI_BG_DISABLE_UPDATE_CHECK=1` | Skip the update check. |
-| `PI_OFFLINE=1` | Skip the update check. |
-| `PI_BG_REGISTRY_URL=<url>` | Use a registry mirror instead of `https://registry.npmjs.org`. |
-
-`/bg-update` only prints update commands; it does not install or self-update.
 
 ## Shell selection
 
@@ -183,7 +171,7 @@ Oversized Fusion outputs fail loudly and are preserved in local artifacts where 
 
 ## Offline behavior
 
-- Update checks skip when `PI_OFFLINE=1` and degrade to no footer update segment on any lookup failure.
+- This extension performs no package update lookup, regardless of offline settings.
 - Background shell commands may still do whatever the command does; the package does not block their network access.
 - Fusion child model calls require configured Pi model routes. `fusion_research` additionally requires network access to the caller-supplied public URLs it fetches.
 

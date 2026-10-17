@@ -306,7 +306,7 @@ Use with `fusion_validate` for advisory read-only review.
   <img src="docs/assets/footer-dock.svg" alt="Illustration of the pi-background-tasks footer dock with running and completed tasks" width="760">
 </p>
 
-When tasks are running or unseen completions exist, the footer shows a compact `bg ...` segment. Press the configured **Shift↓** (default) or **Ctrl+Alt+B** binding to open the focused bottom dock, or use `/tasks` when the key is off. Use `/bg-clear` to acknowledge finished-task footer notices in any terminal.
+The quiet footer shows only running tasks and unseen failures, such as `bg 2 running · 1 failed`, using Pi theme colors without background fill. Successful and stopped jobs remain in history and keep their normal notifications. There are no package update checks, update notices, or persistent footer hints. Press the configured **Shift↓** (default) or **Ctrl+Alt+B** binding to open the focused bottom dock, or use `/tasks` when the key is off. Use `/bg-clear` to acknowledge finished-task footer notices in any terminal.
 
 | Control | Action |
 |---|---|

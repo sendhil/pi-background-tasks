@@ -16,6 +16,8 @@ function write(root: string, path: string, content: string) {
 function fixture() {
   const root = realpathSync(mkdtempSync(join(tmpdir(), 'bg-fork-contract-')));
   roots.push(root);
+  const initialized = spawnSync('git', ['-C', root, 'init', '-q', '-b', 'main'], { encoding: 'utf8' });
+  assert.equal(initialized.status, 0, initialized.stderr);
   const pkg = {
     name: 'pi-background-tasks', private: true, license: 'ISC',
     author: 'Ismail <ismailsalikhodjaev@gmail.com>',
@@ -204,4 +206,20 @@ test('verify-fork clears host package asset overrides and runs exactly three cas
   const result = spawnSync(process.execPath, [script, '--repo', f.root], { encoding: 'utf8', env: { ...process.env, PI_PACKAGE_DIR: '/nonexistent/host-assets' } });
   assert.equal(result.status, 0, result.stdout + result.stderr);
   assert.equal((result.stdout.match(/^# pass 3$/gm) ?? []).length, 2);
+});
+
+test('fork metadata refuses tracked Pi settings or runtime artifacts introduced by a merge', () => {
+  const f = fixture();
+  write(f.root, '.pi/settings.json', '{"packages":["unexpected-feature-package"]}');
+  assert.equal(spawnSync('git', ['-C', f.root, 'add', '.pi/settings.json']).status, 0);
+  assert.throws(() => maintenance.verifyMetadata(f.root), /Tracked Pi settings\/runtime/);
+});
+
+test('fork metadata leaves untracked operator settings and task logs alone', () => {
+  const f = fixture();
+  write(f.root, '.pi/settings.json', '{"operator":"untouched"}');
+  write(f.root, '.pi/tasks/task.log', 'private task output');
+  assert.doesNotThrow(() => maintenance.verifyMetadata(f.root));
+  assert.equal(readFileSync(join(f.root, '.pi/settings.json'), 'utf8'), '{"operator":"untouched"}');
+  assert.equal(readFileSync(join(f.root, '.pi/tasks/task.log'), 'utf8'), 'private task output');
 });

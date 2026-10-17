@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, readdirSync, realpathSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
-import { spawnSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { parseArgs } from 'node:util';
 import { fileURLToPath } from 'node:url';
 
@@ -43,6 +43,9 @@ export function verifyMetadata(root) {
   check(JSON.stringify(pkg.pi?.extensions) === JSON.stringify(PUBLIC_EXTENSIONS), 'Keep public compiled extension roots');
   for (const path of PUBLIC_EXTENSIONS) check(existsSync(join(root, path)), `Missing compiled artifact ${path}`);
   check(pkg.pi?.skills === undefined, 'Maintenance skills must stay project-local, not package resources');
+  const allowedPiFiles = ['.pi/skills/bg-upstream-review/SKILL.md', '.pi/skills/bg-upstream-sync/SKILL.md'];
+  const trackedPiFiles = execFileSync('git', ['--no-optional-locks', '-C', root, 'ls-files', '-z', '--', '.pi'], { encoding: 'utf8' }).split('\0').filter(Boolean);
+  check(trackedPiFiles.every(path => allowedPiFiles.includes(path)), 'Tracked Pi settings/runtime artifacts are forbidden; only the two maintenance skills may be tracked');
   for (const path of [...files(root, 'src'), ...files(root, 'extensions'), ...files(root, 'dist')]) {
     const source = readFileSync(join(root, path), 'utf8');
     check(!/update-check|bg-update|latestKnownVersion|checkForUpdate|PI_BG_REGISTRY_URL|registry\.npmjs\.org/.test(`${path}\n${source}`), `Forbidden updater marker in ${path}`);

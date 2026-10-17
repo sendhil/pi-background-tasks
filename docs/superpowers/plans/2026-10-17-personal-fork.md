@@ -1,3 +1,12 @@
+---
+doc_id: superpowers/plans/2026-10-17-personal-fork
+audience: maintainer
+mode: authored
+review_policy: contract
+stability: evolving
+covers_surfaces: []
+covers_sources: []
+---
 # Personal Background Tasks Fork: Investigation and Delivery Plan
 
 **Date:** 2026-10-17

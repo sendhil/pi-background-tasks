@@ -1,3 +1,12 @@
+---
+doc_id: superpowers/plans/2026-10-17-background-tasks-baseline
+audience: maintainer
+mode: authored
+review_policy: contract
+stability: evolving
+covers_surfaces: []
+covers_sources: []
+---
 # Background Tasks Investigation: Baseline Evidence
 
 Date: 2026-10-17.

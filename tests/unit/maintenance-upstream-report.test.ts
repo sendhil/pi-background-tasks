@@ -18,10 +18,10 @@ function commit(repo: string, file: string, text: string): string {
   git(repo, 'commit', '-qm', file);
   return git(repo, 'rev-parse', 'HEAD');
 }
-function fixture() {
+function fixture(repoName = 'fork') {
   const root = realpathSync(mkdtempSync(join(tmpdir(), 'bg-maintenance-')));
   roots.push(root);
-  const repo = join(root, 'fork');
+  const repo = join(root, repoName);
   mkdirSync(repo);
   git(repo, 'init', '-q', '-b', 'main');
   git(repo, 'config', 'user.name', 'Fixture');
@@ -241,3 +241,41 @@ test('CLI executes guards when its script path is a symlink', () => {
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /Unexpected upstream remote URL/);
 });
+
+test('prepare-sync rejects an ignored candidate inside a newline-named caller via a plain symlink alias before mutation', () => {
+  const f = fixture('fork\nnewline');
+  writeFileSync(join(f.repo, '.git/info/exclude'), '/candidate/\n');
+  const alias = join(f.root, 'plain-alias');
+  symlinkSync(f.repo, alias, 'dir');
+  const options = { ...syncOptions(f), worktree: join(alias, 'candidate') };
+  assert.doesNotMatch(options.worktree, /[\r\n]/);
+  assert.equal(git(f.repo, 'check-ignore', 'candidate/'), 'candidate/');
+  const refs = git(f.repo, 'for-each-ref', '--format=%(refname) %(objectname)');
+  const worktrees = git(f.repo, 'worktree', 'list', '--porcelain', '-z');
+  const index = readFileSync(join(f.repo, '.git/index'));
+  let refusal: unknown;
+  try { maintenance.prepareSync(options, f.expectedRemotes); }
+  catch (error) { refusal = error; }
+  assert.equal(git(f.repo, 'for-each-ref', '--format=%(refname) %(objectname)'), refs, 'refusal must precede branch creation');
+  assert.equal(git(f.repo, 'worktree', 'list', '--porcelain', '-z'), worktrees, 'refusal must precede worktree registration');
+  assert.equal(existsSync(join(f.repo, 'candidate')), false);
+  assert.deepEqual(readFileSync(join(f.repo, '.git/index')), index);
+  assert.equal(git(f.repo, 'status', '--porcelain'), '');
+  assert.ok(refusal instanceof Error);
+  assert.match(refusal.message, /outside existing worktrees/);
+});
+
+for (const [label, repoName] of [['quote', 'fork"quote'], ['tab', 'fork\ttab'], ['backslash', 'fork\\backslash']] as const) {
+  test(`prepare-sync preserves containment checks and outside creation for ${label} paths`, () => {
+    const f = fixture(repoName);
+    const inside = { ...syncOptions(f), worktree: join(f.repo, 'candidate') };
+    assert.throws(() => maintenance.prepareSync(inside, f.expectedRemotes), /outside existing worktrees/);
+    assert.equal(git(f.repo, 'for-each-ref', '--format=%(refname)', `refs/heads/${inside.branch}`), '');
+    assert.equal(existsSync(inside.worktree), false);
+    const outside = { ...syncOptions(f), worktree: join(f.root, `${repoName}-candidate`) };
+    const report = maintenance.prepareSync(outside, f.expectedRemotes);
+    assert.equal(report.worktree, outside.worktree);
+    assert.equal(git(outside.worktree, 'rev-parse', 'HEAD'), f.downstream);
+    assert.deepEqual(report.before, report.after);
+  });
+}

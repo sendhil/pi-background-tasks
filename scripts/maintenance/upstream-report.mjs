@@ -45,10 +45,14 @@ function preflight(repo, expectedRemotes) {
   if (git(repo, 'status', '--porcelain=v1', '--untracked-files=all')) throw new Error('A clean worktree and index are required; never auto-stash');
 }
 
-function git(repo, ...args) {
+function gitRaw(repo, ...args) {
   return execFileSync('git', ['--no-optional-locks', '-C', repo, ...args], {
     encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'],
-  }).trim();
+  });
+}
+
+function git(repo, ...args) {
+  return gitRaw(repo, ...args).trim();
 }
 
 function snapshot(repo, excludedRefs = ['refs/remotes/upstream/main']) {
@@ -121,9 +125,10 @@ export function prepareSync({ repo, previousUpstream, downstream, upstream, bran
   worktree = resolve(worktree);
   if (lstatSync(worktree, { throwIfNoEntry: false })) throw new Error('Worktree path occupied; never reset/reuse');
   worktree = resolve(realpathSync(dirname(worktree)), basename(worktree));
-  for (const line of git(repo, '-c', 'core.quotePath=false', 'worktree', 'list', '--porcelain').split('\n')) {
-    if (!line.startsWith('worktree ')) continue;
-    const occupied = line.slice('worktree '.length);
+  // Paths may contain newlines, including after resolving a symlinked parent.
+  for (const field of gitRaw(repo, 'worktree', 'list', '--porcelain', '-z').split('\0')) {
+    if (!field.startsWith('worktree ')) continue;
+    const occupied = field.slice('worktree '.length);
     if (worktree === occupied || worktree.startsWith(`${occupied}${sep}`)) throw new Error('Worktree must be outside existing worktrees (including occupied registrations)');
   }
   const before = snapshot(repo, [`refs/heads/${branch}`]);

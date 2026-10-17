@@ -3,6 +3,7 @@ import { spawnSync } from 'node:child_process';
 import { appendFileSync, mkdirSync, mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { delimiter, dirname, join, resolve } from 'node:path';
+import { resolveGeneratedNpmCli } from './resolve-generated-npm-cli.mjs';
 
 const usage = `Usage: node scripts/maintenance/verify-generated.mjs
   --candidate <full commit SHA> --node-version <exact version> --npm-version <exact version>
@@ -92,7 +93,9 @@ function verify(options) {
   if (process.versions.node !== options['node-version']) {
     throw new Error(`node version mismatch: expected ${options['node-version']}, actual ${process.versions.node}`);
   }
-  const npmVersion = command('npm', ['--version'], process.cwd()).trim();
+  const npmCli = resolveGeneratedNpmCli(process.execPath, env);
+  const npm = (args, cwd) => command(process.execPath, [npmCli, ...args], cwd);
+  const npmVersion = npm(['--version'], process.cwd()).trim();
   if (npmVersion !== options['npm-version']) throw new Error(`npm version mismatch: expected ${options['npm-version']}, actual ${npmVersion}`);
   const repo = git(resolve(options.repo ?? process.cwd()), 'rev-parse', '--show-toplevel').trim();
   let candidate;
@@ -109,7 +112,7 @@ function verify(options) {
   logPath = join(owned, 'verify-generated.log');
   log(`verify-generated: log ${logPath}`);
   log(`verify-generated: candidate ${candidate}`);
-  log(`verify-generated: toolchain node=${process.versions.node} npm=${npmVersion} executable=${process.execPath} platform=${process.platform}/${process.arch}`);
+  log(`verify-generated: toolchain node=${process.versions.node} npm=${npmVersion} executable=${process.execPath} npmCli=${npmCli} platform=${process.platform}/${process.arch}`);
   try {
     mkdirSync(checkout);
     git(checkout, 'init', '--quiet');
@@ -118,10 +121,10 @@ function verify(options) {
     if (git(checkout, 'status', '--porcelain', '--untracked-files=all', '--ignored=matching')) {
       throw new Error('disposable checkout did not start clean');
     }
-    command('npm', ['ci', '--ignore-scripts', '--include=dev', '--no-audit', '--no-fund'], checkout);
+    npm(['ci', '--ignore-scripts', '--include=dev', '--no-audit', '--no-fund'], checkout);
     checkCandidate(checkout, candidate);
-    command('npm', ['run', 'build:runtime'], checkout);
-    command('npm', ['run', 'docs:generate'], checkout);
+    npm(['run', 'build:runtime'], checkout);
+    npm(['run', 'docs:generate'], checkout);
     checkCandidate(checkout, candidate);
     log('verify-generated: generated artifacts match committed candidate');
   } finally {

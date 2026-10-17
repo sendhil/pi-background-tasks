@@ -2,12 +2,16 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, it } from 'node:test';
 
 const gate = fileURLToPath(new URL('../../scripts/maintenance/verify-generated.mjs', import.meta.url));
-const npmVersion = spawnSync('npm', ['--version'], { encoding: 'utf8' }).stdout.trim();
+const npmResolverUrl = new URL('../../scripts/maintenance/resolve-generated-npm-cli.mjs', import.meta.url).href;
+const { resolveGeneratedNpmCli } = await import(npmResolverUrl);
+const npmVersionResult = spawnSync(process.execPath, [resolveGeneratedNpmCli(), '--version'], { encoding: 'utf8' });
+assert.equal(npmVersionResult.status, 0, npmVersionResult.stderr);
+const npmVersion = npmVersionResult.stdout.trim();
 
 function git(root: string, ...args: string[]): string {
   const result = spawnSync('git', ['-C', root, ...args], { encoding: 'utf8' });
@@ -16,8 +20,8 @@ function git(root: string, ...args: string[]): string {
 }
 
 function put(root: string, path: string, text: string): void {
-  mkdirSync(dirname(join(root, path)), { recursive: true });
-  writeFileSync(join(root, path), text);
+  mkdirSync(dirname(resolve(root, path)), { recursive: true });
+  writeFileSync(resolve(root, path), text);
 }
 
 function fixture(run: (root: string, candidate: string) => void, options: { extraBuild?: string; extraDocs?: string } = {}): void {
@@ -65,11 +69,11 @@ ${options.extraDocs ?? ''}
   }
 }
 
-function invoke(root: string, candidate: string, extra: string[] = []) {
+function invoke(root: string, candidate: string, extra: string[] = [], extraEnv: NodeJS.ProcessEnv = {}) {
   const result = spawnSync(process.execPath, [gate, '--repo', root, '--candidate', candidate,
     '--node-version', process.versions.node, '--npm-version', npmVersion, ...extra], {
     encoding: 'utf8',
-    env: { ...process.env, npm_config_offline: 'true', npm_config_audit: 'false', npm_config_fund: 'false' },
+    env: { ...process.env, npm_config_offline: 'true', npm_config_audit: 'false', npm_config_fund: 'false', ...extraEnv },
   });
   const output = `${result.stdout}${result.stderr}`;
   const log = /^verify-generated: log (.+)$/mu.exec(output)?.[1];
@@ -82,13 +86,94 @@ function invoke(root: string, candidate: string, extra: string[] = []) {
   return { status: result.status, output, log };
 }
 
+function resolveFixtureNpm(nodePath: string, env: NodeJS.ProcessEnv = {}) {
+  return spawnSync(process.execPath, ['--input-type=module', '--eval',
+    `import { resolveGeneratedNpmCli } from ${JSON.stringify(npmResolverUrl)};
+console.log(resolveGeneratedNpmCli(process.argv[1], JSON.parse(process.argv[2])));`, nodePath, JSON.stringify(env)], { encoding: 'utf8' });
+}
+
+void describe('maintenance npm JavaScript CLI portability', () => {
+  for (const entry of ['npm-cli.js', 'npm.cmd']) {
+    void it(`resolves npm_execpath ${entry} to JavaScript and preserves spaces/metacharacters without a shell`, () => {
+      fixture((root, candidate) => {
+        const home = join(root, 'npm home & echo SHOULD_NOT_RUN');
+        const cli = join(home, 'node_modules/npm/bin/npm-cli.js');
+        const shim = join(home, 'npm.cmd');
+        const calls = join(root, 'npm-argv.jsonl');
+        put(root, shim, '@echo SHOULD_NOT_RUN\r\nexit /b 93\r\n');
+        put(root, join(home, 'node_modules/npm/package.json'), '{"type":"module"}');
+        put(root, cli, `import { appendFileSync } from 'node:fs';
+appendFileSync(${JSON.stringify(calls)}, JSON.stringify({ executable: process.execPath, args: process.argv.slice(2) }) + '\\n');
+if (process.argv[2] === '--version') console.log(${JSON.stringify(npmVersion)});
+`);
+        const result = invoke(root, candidate, [], { npm_execpath: entry === 'npm.cmd' ? shim : cli });
+        assert.equal(result.status, 0, result.output);
+        assert.ok(existsSync(calls), 'gate must invoke the selected JavaScript CLI, never bare npm or the .cmd shim');
+        const recorded = readFileSync(calls, 'utf8').trim().split('\n').map((line) => JSON.parse(line) as { executable: string; args: string[] });
+        assert.deepEqual(recorded.map((call) => call.args), [
+          ['--version'], ['ci', '--ignore-scripts', '--include=dev', '--no-audit', '--no-fund'],
+          ['run', 'build:runtime'], ['run', 'docs:generate'],
+        ]);
+        for (const call of recorded) assert.equal(realpathSync(call.executable), realpathSync(process.execPath));
+        assert.ok(result.output.includes(cli), 'resolved npm path is recorded for audit');
+      });
+    });
+  }
+
+  void it('resolves known Windows and Unix install layouts without executing a .cmd file', () => {
+    const root = realpathSync(mkdtempSync(join(tmpdir(), 'generated-npm-layout-')));
+    try {
+      const node = join(root, 'Program Files & tools', 'node.exe');
+      const adjacent = join(dirname(node), 'node_modules/npm/bin/npm-cli.js');
+      const global = resolve(dirname(node), '../lib/node_modules/npm/bin/npm-cli.js');
+      put(root, adjacent, '');
+      put(root, join(dirname(node), 'npm.cmd'), '@exit /b 93');
+      let result = resolveFixtureNpm(node);
+      assert.equal(result.status, 0, result.stderr);
+      assert.equal(result.stdout.trim(), adjacent);
+      result = resolveFixtureNpm(join(root, 'other node', 'node.exe'), { Path: dirname(node) });
+      assert.equal(result.status, 0, result.stderr);
+      assert.equal(result.stdout.trim(), adjacent, 'PATH npm.cmd resolves to adjacent JavaScript without spawning the shim');
+      rmSync(adjacent);
+      put(root, global, '');
+      result = resolveFixtureNpm(node);
+      assert.equal(result.status, 0, result.stderr);
+      assert.equal(result.stdout.trim(), global);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  void it('fails closed on invalid npm_execpath values and missing JavaScript CLI files', () => {
+    const root = realpathSync(mkdtempSync(join(tmpdir(), 'generated-npm-invalid-')));
+    try {
+      const node = join(root, 'node.exe');
+      const shim = join(root, 'npm.cmd');
+      put(root, shim, '@exit /b 93');
+      put(root, 'other.js', "throw new Error('must not execute arbitrary JavaScript');");
+      const directory = join(root, 'npm-cli.js');
+      mkdirSync(directory);
+      for (const entry of ['npm.cmd', shim, directory, join(root, 'other.js'), '"quoted npm-cli.js"']) {
+        const result = resolveFixtureNpm(node, { npm_execpath: entry });
+        assert.notEqual(result.status, 0);
+        assert.match(result.stderr, /cannot resolve npm-cli\.js/);
+      }
+      const missing = resolveFixtureNpm(node);
+      assert.notEqual(missing.status, 0);
+      assert.match(missing.stderr, /cannot resolve npm-cli\.js/);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+});
+
 void describe('maintenance committed generated freshness CLI', () => {
   void it('accepts fresh committed bytes using locked offline dependencies, runtime before docs, and no repair-capable tests', () => {
     fixture((root, candidate) => {
       const result = invoke(root, candidate);
       assert.equal(result.status, 0, result.output);
       assert.match(result.output, /generated artifacts match committed candidate/);
-      assert.match(result.output, /npm ci --ignore-scripts/);
+      assert.match(result.output, /npm-cli\.js ci --ignore-scripts/);
       assert.ok(result.log);
       assert.equal(existsSync(join(root, 'node_modules')), false);
     });

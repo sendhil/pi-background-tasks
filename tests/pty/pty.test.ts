@@ -477,11 +477,14 @@ expect {
 }
 send "R"
 expect {
-  -re "Reran as PTY Done Rerun|Rerunning PTY Done Rerun" {}
+  -re {Reran as PTY Done Rerun \\((b[0-9a-f]+)\\)} { set rerunId $expect_out(1,string) }
   timeout { puts "RERUN_COMPLETE_ACTION_TIMEOUT"; exit 24 }
 }
 send "x"
-after 200
+expect {
+  -re "bg completed.*PTY Done Rerun.*$rerunId" {}
+  timeout { puts "RERUN_COMPLETE_SECOND_TERMINAL_TIMEOUT"; exit 36 }
+}
 send {/bg --name "PTY Stop Rerun" sleep 20}
 send "\\r"
 expect {

@@ -5,14 +5,17 @@ import { tmpdir } from 'node:os';
 import { delimiter, dirname, join, resolve } from 'node:path';
 import { resolveGeneratedNpmCli } from './resolve-generated-npm-cli.mjs';
 
+const environmentBoundary = 'Inherits trusted caller npm/Node configuration. Exact Node/npm version pinning is not hermetic environment isolation; controlled CI is recommended.';
+
 const usage = `Usage: node scripts/maintenance/verify-generated.mjs
-  --candidate <full commit SHA> --node-version <exact version> --npm-version <exact version>
+  --candidate <40-hex SHA-1 commit> --node-version <exact version> --npm-version <exact version>
   [--repo <local repository>]
 
 Validates committed runtime/docs bytes in a disposable checkout, not the caller's
 working tree. Runs npm ci --ignore-scripts, build:runtime, then docs:generate.
 Logs survive checkout cleanup; no candidate repairs are committed. Run only on
 trusted candidate code: isolation protects caller state, not against hostile code.
+${environmentBoundary}
 `;
 
 function argumentsFrom(argv) {
@@ -26,8 +29,8 @@ function argumentsFrom(argv) {
     if (!argv[i + 1] || argv[i + 1].startsWith('--')) throw new Error(`missing value for ${name}`);
     options[name.slice(2)] = argv[i + 1];
   }
-  if (!/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/u.test(options.candidate ?? '')) {
-    throw new Error('--candidate must be an explicit full commit SHA (not HEAD, a branch, or a tag)');
+  if (!/^[a-f0-9]{40}$/u.test(options.candidate ?? '')) {
+    throw new Error('--candidate must be an explicit full commit SHA (40-hex SHA-1, not HEAD, a branch, or a tag)');
   }
   for (const key of ['node-version', 'npm-version']) {
     if (!/^\d+\.\d+\.\d+(?:-[\w.-]+)?$/u.test(options[key] ?? '')) throw new Error(`--${key} must pin an exact version`);
@@ -112,10 +115,11 @@ function verify(options) {
   logPath = join(owned, 'verify-generated.log');
   log(`verify-generated: log ${logPath}`);
   log(`verify-generated: candidate ${candidate}`);
+  log(`verify-generated: environment ${environmentBoundary}`);
   log(`verify-generated: toolchain node=${process.versions.node} npm=${npmVersion} executable=${process.execPath} npmCli=${npmCli} platform=${process.platform}/${process.arch}`);
   try {
     mkdirSync(checkout);
-    git(checkout, 'init', '--quiet');
+    git(checkout, 'init', '--quiet', '--object-format=sha1');
     git(checkout, 'fetch', '--no-tags', '--no-recurse-submodules', '--', repo, candidate);
     git(checkout, 'checkout', '--detach', '--force', candidate);
     if (git(checkout, 'status', '--porcelain', '--untracked-files=all', '--ignored=matching')) {

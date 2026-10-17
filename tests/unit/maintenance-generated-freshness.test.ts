@@ -27,7 +27,7 @@ function put(root: string, path: string, text: string): void {
 function fixture(run: (root: string, candidate: string) => void, options: { extraBuild?: string; extraDocs?: string } = {}): void {
   const root = realpathSync(mkdtempSync(join(tmpdir(), 'generated-fixture-')));
   try {
-    git(root, 'init', '-q');
+    git(root, 'init', '-q', '--object-format=sha1');
     git(root, 'config', 'user.email', 'fixture@example.invalid');
     git(root, 'config', 'user.name', 'Fixture');
     put(root, '.gitignore', 'node_modules/\ndist/ignored.js\ndocs/ignored.md\ndocs/assets/\n');
@@ -77,13 +77,15 @@ function invoke(root: string, candidate: string, extra: string[] = [], extraEnv:
   });
   const output = `${result.stdout}${result.stderr}`;
   const log = /^verify-generated: log (.+)$/mu.exec(output)?.[1];
+  let retainedLog = '';
   if (log) {
     assert.ok(existsSync(log), 'the log survives checkout cleanup');
-    assert.match(readFileSync(log, 'utf8'), new RegExp(candidate));
+    retainedLog = readFileSync(log, 'utf8');
+    assert.match(retainedLog, new RegExp(candidate));
     assert.equal(existsSync(join(dirname(log), 'checkout')), false, 'owned checkout is cleaned after success or failure');
     rmSync(dirname(log), { recursive: true, force: true });
   }
-  return { status: result.status, output, log };
+  return { status: result.status, output, log, retainedLog };
 }
 
 function resolveFixtureNpm(nodePath: string, env: NodeJS.ProcessEnv = {}) {
@@ -176,6 +178,40 @@ void describe('maintenance committed generated freshness CLI', () => {
       assert.match(result.output, /npm-cli\.js ci --ignore-scripts/);
       assert.ok(result.log);
       assert.equal(existsSync(join(root, 'node_modules')), false);
+    });
+  });
+
+  void it('accepts an existing SHA-1 candidate when temporary HOME defaults new repositories to SHA-256', () => {
+    fixture((root, candidate) => {
+      assert.equal(git(root, 'rev-parse', '--show-object-format'), 'sha1');
+      const home = join(root, 'temporary-home');
+      const config = '[init]\n\tdefaultObjectFormat = sha256\n';
+      put(home, '.gitconfig', config);
+      const callerEnv = { HOME: home, USERPROFILE: home, XDG_CONFIG_HOME: join(home, '.config') };
+      const preference = spawnSync('git', ['config', '--global', '--get', 'init.defaultObjectFormat'], {
+        env: { ...process.env, ...callerEnv }, encoding: 'utf8',
+      });
+      assert.equal(preference.status, 0, preference.stderr);
+      assert.equal(preference.stdout.trim(), 'sha256', 'temporary HOME config must be active');
+      const result = invoke(root, candidate, [], callerEnv);
+      assert.equal(result.status, 0, result.output);
+      assert.match(result.output, /generated artifacts match committed candidate/);
+      assert.equal(readFileSync(join(home, '.gitconfig'), 'utf8'), config);
+      assert.equal(git(root, 'rev-parse', 'HEAD'), candidate);
+    });
+  });
+
+  void it('documents the trusted npm/Node environment boundary in help and retained logs', () => {
+    const help = spawnSync(process.execPath, [gate, '--help'], { encoding: 'utf8' });
+    assert.equal(help.status, 0, help.stderr);
+    fixture((root, candidate) => {
+      const result = invoke(root, candidate);
+      assert.equal(result.status, 0, result.output);
+      for (const output of [help.stdout, result.retainedLog]) {
+        assert.match(output, /trusted caller npm\/Node configuration/);
+        assert.match(output, /not hermetic environment isolation/);
+        assert.match(output, /controlled CI/);
+      }
     });
   });
 
@@ -287,6 +323,7 @@ execFileSync(process.execPath, [${JSON.stringify(gate)}, '--candidate', '${'0'.r
       for (const [ref, args, message] of [
         ['HEAD', [], /full commit SHA/],
         ['0'.repeat(40), [], /candidate commit/],
+        ['0'.repeat(64), [], /40-hex SHA-1/],
         [candidate, ['--node-version', '0.0.0'], /node version mismatch/],
         [candidate, ['--npm-version', '0.0.0'], /npm version mismatch/],
         [candidate, ['--unexpected'], /unknown argument/],

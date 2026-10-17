@@ -8,9 +8,10 @@ import { isDeepStrictEqual } from 'node:util';
 import { parseJsonText } from '../src/core/common.js';
 import { isolatedTestEnv } from '../tests/helpers/normalize.js';
 import { installFusionFakePi, resolveRealPiCli } from '../tests/helpers/fusion-fake-pi.js';
+import { publicExtensionRoots, qualifyInstalledHost, resolveHostCli } from '../tests/fixtures/host-qualification.js';
 
-const requiredVersions = ['0.81.1', '0.82.1', '0.83.0', '0.84.0'] as const;
-type RequiredPiVersion = (typeof requiredVersions)[number];
+const historicalVersions = ['0.81.1', '0.82.1', '0.83.0', '0.84.0'] as const;
+type HistoricalPiVersion = (typeof historicalVersions)[number];
 // `URL.pathname` yields `/D:/...` on Windows, which then joins into `D:\D:\...`.
 const root = fileURLToPath(new URL('../', import.meta.url));
 
@@ -29,7 +30,7 @@ const REMOVED_TYPEBOX_APIS = [
 ] as const;
 
 /** Pi bundles typebox, so it must be a peer dependency with the documented "*" range. */
-function verifyTypeBoxPeerPosture(): void {
+function verifyHostPeerPosture(): void {
   const manifest = parseJsonText(readFileSync(join(root, 'package.json'), 'utf8'));
   if (!isRecord(manifest)) throw new Error('package.json must be an object');
   const peers = manifest['peerDependencies'];
@@ -45,26 +46,20 @@ function verifyTypeBoxPeerPosture(): void {
     );
   }
   for (const key of ['@earendil-works/pi-coding-agent', '@earendil-works/pi-tui']) {
-    const range = peers[key];
-    if (typeof range !== 'string') {
-      throw new Error(`${key} peer range must be a string, saw ${String(range)}`);
+    if (peers[key] !== '*') throw new Error(`${key} must be a host-provided "*" peer`);
+  }
+  for (const key of ['@earendil-works/pi-ai', '@earendil-works/pi-agent-core', '@earendil-works/pi-coding-agent', '@earendil-works/pi-tui', 'typebox']) {
+    for (const field of ['dependencies', 'optionalDependencies']) {
+      const dependencies: unknown = manifest[field];
+      if (isRecord(dependencies) && dependencies[key] !== undefined)
+        throw new Error(`${key} must not be a private runtime dependency`);
     }
-    for (const version of requiredVersions) {
-      if (!range.includes(version)) {
-        throw new Error(`${key} peer range must declare Pi ${version} support, saw ${range}`);
-      }
+    for (const field of ['bundledDependencies', 'bundleDependencies']) {
+      const bundled: unknown = manifest[field];
+      if (bundled === true || (Array.isArray(bundled) && bundled.includes(key)))
+        throw new Error(`${key} must never be bundled`);
     }
   }
-  const deps = manifest['dependencies'];
-  if (isRecord(deps) && deps['typebox'] !== undefined)
-    throw new Error('typebox must not be a runtime dependency; Pi bundles it');
-  if (isRecord(deps) && deps['@earendil-works/pi-ai'] !== undefined)
-    throw new Error('@earendil-works/pi-ai must not be a private runtime dependency');
-  const bundled = manifest['bundledDependencies'];
-  if (Array.isArray(bundled) && bundled.includes('typebox'))
-    throw new Error('typebox must never be bundled');
-  if (Array.isArray(bundled) && bundled.includes('@earendil-works/pi-ai'))
-    throw new Error('@earendil-works/pi-ai must never be bundled');
 }
 
 interface PackFileEntry {
@@ -411,7 +406,7 @@ function assertFusionLifecycleHookSupport(temp: string, version: string): void {
   }
 }
 
-/** Every supported Pi line must expose native Anthropic breakpoints for Fusion to normalize. */
+/** Each historical regression lane must expose native Anthropic breakpoints for Fusion to normalize. */
 function assertAnthropicCacheAdapterSupport(temp: string, version: string): void {
   const candidates = [
     join(temp, 'node_modules', '@earendil-works', 'pi-ai', 'dist', 'api', 'anthropic-messages.js'),
@@ -445,9 +440,9 @@ function assertAnthropicCacheAdapterSupport(temp: string, version: string): void
   }
 }
 
-/** Exact TypeBox line bundled by each supported Pi release. */
+/** Exact TypeBox line bundled by each historical Pi release. */
 const TYPEBOX_BY_PI_VERSION: Record<
-  RequiredPiVersion,
+  HistoricalPiVersion,
   { readonly spec: string; readonly prefix: string }
 > = {
   '0.81.1': { spec: 'typebox@~1.1.38', prefix: '1.1.' },
@@ -457,8 +452,8 @@ const TYPEBOX_BY_PI_VERSION: Record<
 };
 
 function expectedTypeBoxLine(
-  version: RequiredPiVersion,
-): (typeof TYPEBOX_BY_PI_VERSION)[RequiredPiVersion] {
+  version: HistoricalPiVersion,
+): (typeof TYPEBOX_BY_PI_VERSION)[HistoricalPiVersion] {
   return TYPEBOX_BY_PI_VERSION[version];
 }
 
@@ -480,11 +475,11 @@ function isProviderCallProbeRecord(value: unknown): value is ProviderCallProbeRe
   return isRecord(value) && value['hook'] === 'provider_call';
 }
 
-/** Pin the transport-blocking context-abort behavior of every supported Pi line. */
+/** Pin the transport-blocking context-abort behavior of each historical Pi lane. */
 async function assertDelegateContextAbortSupport(
   temp: string,
   cli: string,
-  version: RequiredPiVersion,
+  version: HistoricalPiVersion,
   env: NodeJS.ProcessEnv,
 ): Promise<void> {
   const probeDir = join(temp, 'hook-contract-probe');
@@ -575,7 +570,7 @@ async function assertDelegateContextAbortSupport(
   );
 }
 
-async function smokeVersion(version: RequiredPiVersion, tarballPath: string): Promise<void> {
+async function smokeVersion(version: HistoricalPiVersion, tarballPath: string): Promise<void> {
   const temp = await mkdtemp(join(tmpdir(), `pi-bg-compat-${version}-`));
   const typebox = expectedTypeBoxLine(version);
   try {
@@ -601,17 +596,8 @@ async function smokeVersion(version: RequiredPiVersion, tarballPath: string): Pr
       join(temp, 'node_modules', 'pi-background-tasks'),
       `Pi ${version}`,
     );
-    const cli = join(temp, 'node_modules', '@earendil-works', 'pi-coding-agent', 'dist', 'cli.js');
-    const extension = join(
-      temp,
-      'node_modules',
-      'pi-background-tasks',
-      'extensions',
-      'background-tasks.ts',
-    );
-    if (!existsSync(cli)) throw new Error(`Pi CLI not installed for ${version}: ${cli}`);
-    if (!existsSync(extension))
-      throw new Error(`package extension missing for ${version}: ${extension}`);
+    const cli = resolveHostCli(join(temp, 'node_modules', '@earendil-works/pi-coding-agent'));
+    const extensions = publicExtensionRoots(join(temp, 'node_modules/pi-background-tasks'));
     const agentDir = join(temp, 'agent');
     await mkdir(agentDir, { recursive: true });
     const fake = await installFusionFakePi(temp, { mergedText: `compat fusion ${version}` });
@@ -630,14 +616,14 @@ async function smokeVersion(version: RequiredPiVersion, tarballPath: string): Pr
       PI_BG_SCRIPTED_API_KEY: 'scripted-api-key',
       PI_BG_SCRIPTED_SCENARIO: 'display-only-bg',
     };
+    delete env['PI_BG_FEATURES'];
     await assertDelegateContextAbortSupport(temp, cli, version, env);
     run(
       process.execPath,
       [
         cli,
         '--no-extensions',
-        '-e',
-        extension,
+        ...extensions.flatMap(extension => ['-e', extension]),
         '--offline',
         '--no-tools',
         '--no-session',
@@ -656,8 +642,7 @@ async function smokeVersion(version: RequiredPiVersion, tarballPath: string): Pr
         '--no-extensions',
         '-e',
         scriptedProviderPath,
-        '-e',
-        extension,
+        ...extensions.flatMap(extension => ['-e', extension]),
         '--offline',
         '--no-tools',
         '--no-session',
@@ -713,8 +698,7 @@ async function smokeVersion(version: RequiredPiVersion, tarballPath: string): Pr
         '--mode',
         'rpc',
         '--no-extensions',
-        '-e',
-        extension,
+        ...extensions.flatMap(extension => ['-e', extension]),
         '--offline',
         '--no-tools',
         '--no-session',
@@ -752,7 +736,7 @@ async function verifyCurrentHostFusionUsage(): Promise<string> {
       'scripted-provider',
       'scripted-provider-extension.ts',
     );
-    const extension = join(root, 'extensions', 'background-tasks.ts');
+    const extensions = publicExtensionRoots(root);
     const env: NodeJS.ProcessEnv = {
       ...process.env,
       ...isolatedTestEnv,
@@ -762,14 +746,14 @@ async function verifyCurrentHostFusionUsage(): Promise<string> {
       PI_BG_SCRIPTED_SCENARIO: 'fusion-reason',
       PI_BG_SCRIPTED_EVENTS: join(temp, 'provider-events.jsonl'),
     };
+    delete env['PI_BG_FEATURES'];
     const rpcArgs = [
       '--mode',
       'rpc',
       '--no-extensions',
       '-e',
       scriptedProviderPath,
-      '-e',
-      extension,
+      ...extensions.flatMap(extension => ['-e', extension]),
       '--offline',
       '--no-skills',
       '--no-prompt-templates',
@@ -840,15 +824,22 @@ async function verifyCurrentHostFusionUsage(): Promise<string> {
   }
 }
 
-verifyTypeBoxPeerPosture();
-const pack = parsePack(run('npm', ['pack', '--json'], root));
-const tarballPath = join(root, pack.filename);
-try {
-  for (const version of requiredVersions) await smokeVersion(version, tarballPath);
-  const currentHostVersion = await verifyCurrentHostFusionUsage();
-  console.log(
-    `Smoke-loaded pi-background-tasks against Pi ${requiredVersions.join(', ')}; current host ${currentHostVersion} persisted and replayed full Fusion usage`,
-  );
-} finally {
-  await rm(tarballPath, { force: true });
+// Historical network-install lanes are opt-in regression evidence, not peer version promises.
+// Current-host qualification requires an explicitly approved committed candidate and never rebuilds it.
+verifyHostPeerPosture();
+const args = process.argv.slice(2);
+if (args.length === 4 && args[0] === '--host' && args[2] === '--candidate') {
+  await qualifyInstalledHost(root, requireString(args[1], '--host'), requireString(args[3], '--candidate'));
+} else if (args.length === 1 && args[0] === '--historical') {
+  const pack = parsePack(run('npm', ['pack', '--json'], root));
+  const tarballPath = join(root, pack.filename);
+  try {
+    for (const version of historicalVersions) await smokeVersion(version, tarballPath);
+    const currentHostVersion = await verifyCurrentHostFusionUsage();
+    console.log(`Historical regression hosts: ${historicalVersions.join(', ')}; host ${currentHostVersion} Fusion usage passed`);
+  } finally {
+    await rm(tarballPath, { force: true });
+  }
+} else {
+  throw new Error('Usage: tsx scripts/test-compat.ts --host /absolute/pi-coding-agent --candidate <approved-full-SHA> | --historical (fetches historical SDKs)');
 }

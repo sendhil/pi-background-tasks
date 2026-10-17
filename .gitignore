@@ -1,4 +1,14 @@
 node_modules/
 .pi/
+!/.pi/
+/.pi/*
+!/.pi/skills/
+/.pi/skills/*
+!/.pi/skills/bg-upstream-review/
+!/.pi/skills/bg-upstream-sync/
+/.pi/skills/bg-upstream-review/*
+/.pi/skills/bg-upstream-sync/*
+!/.pi/skills/bg-upstream-review/SKILL.md
+!/.pi/skills/bg-upstream-sync/SKILL.md
 *.tgz
 .DS_Store

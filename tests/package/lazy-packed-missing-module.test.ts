@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import { cp, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { cp, mkdir, mkdtemp, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -118,9 +118,23 @@ afterEach(async () => {
 });
 
 void describe('packed lazy-module closure', { concurrency: false }, () => {
-  void it('loads without private Pi peers, then bounds a damaged deferred producer', async () => {
+  void it('loads without private Pi peers, then bounds a damaged deferred producer', async (t) => {
     const root = await mkdtemp(join(tmpdir(), 'pi-bg-lazy-packed-'));
     roots.push(root);
+    const inheritedEnv = { ...process.env };
+    t.after(() => {
+      for (const key of Object.keys(process.env)) Reflect.deleteProperty(process.env, key);
+      Object.assign(process.env, inheritedEnv);
+    });
+    // No personal provider credentials or settings may reach a packed probe.
+    for (const key of Object.keys(process.env)) Reflect.deleteProperty(process.env, key);
+    for (const key of ['PATH', 'SystemRoot', 'ComSpec', 'TMPDIR', 'TMP', 'TEMP', 'npm_execpath']) {
+      if (inheritedEnv[key] !== undefined) process.env[key] = inheritedEnv[key];
+    }
+    Object.assign(process.env, {
+      HOME: join(root, 'home'), USERPROFILE: join(root, 'home'),
+      PI_OFFLINE: '1', PI_SKIP_VERSION_CHECK: '1', PI_TELEMETRY: '0', CI: '1',
+    });
     const tarballs = join(root, 'tarballs');
     const unpacked = join(root, 'unpacked');
     const tarball = await runNpmPack(root, tarballs);
@@ -282,6 +296,8 @@ void describe('packed lazy-module closure', { concurrency: false }, () => {
       );
 
       const context = startupSession.extensionRunner.createContext();
+      // An unconfigured session may select a catalog model; this probe must not.
+      Object.defineProperty(context, 'model', { value: undefined });
       const delegate = startupSession.getToolDefinition('bg_delegate');
       const attested = startupSession.getToolDefinition('bg_run_pi_attested');
       const fusion = startupSession.getToolDefinition('fusion_reason');
@@ -292,13 +308,13 @@ void describe('packed lazy-module closure', { concurrency: false }, () => {
         await rejection(
           delegate.execute(
             'packed-delegate-lazy-probe',
-            { name: 'Lazy probe', prompt: 'Do not launch.' },
+            { name: 'Lazy probe', prompt: 'Do not launch.', route: { provider: 'missing-provider', model: 'missing-model' } },
             undefined,
             undefined,
             context,
           ),
         ),
-        /route .*reports no usable context-window capacity/u,
+        /route missing-provider\/missing-model is not available/u,
         'bg_delegate',
       );
       assertSemanticLazyFailure(
@@ -330,10 +346,17 @@ void describe('packed lazy-module closure', { concurrency: false }, () => {
             context,
           ),
         ),
-        /current model is not available to child Pi/u,
+        /candidate 1 uses \$current but Pi has no current model/u,
         'fusion_reason',
       );
 
+      assert.equal(existsSync(join(startupCwd, '.pi/delegate')), false);
+      // Attested preflight creates an empty runtime directory before model refusal.
+      assert.deepEqual(
+        (await readdir(join(startupCwd, '.pi/tasks'), { recursive: true, withFileTypes: true }))
+          .filter((entry) => !entry.isDirectory()).map((entry) => entry.name),
+        [],
+      );
       const baseUi = startupSession.extensionRunner.getUIContext();
       const custom = (async () => ({ type: 'cancelled' })) as ExtensionUIContext['custom'];
       startupSession.extensionRunner.setUIContext(
@@ -445,7 +468,7 @@ void describe('packed lazy-module closure', { concurrency: false }, () => {
       const invoke = () =>
         delegate.execute(
           'packed-missing-module',
-          { name: 'Missing bytes', prompt: 'Do not launch.' },
+          { name: 'Missing bytes', prompt: 'Do not launch.', route: { provider: 'missing-provider', model: 'missing-model' } },
           undefined,
           undefined,
           activeSession.extensionRunner.createContext(),

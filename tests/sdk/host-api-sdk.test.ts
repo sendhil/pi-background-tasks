@@ -1,7 +1,7 @@
 import { afterEach, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
-import { mkdir, mkdtemp, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import {
@@ -31,6 +31,7 @@ function field(value: unknown, key: string): unknown {
 }
 
 interface Harness {
+  cwd: string;
   session: AgentSession;
   events: EventBus;
   changes: Frame[];
@@ -95,6 +96,7 @@ async function harness(features?: string): Promise<Harness> {
   await session.bindExtensions({ onError: (error) => errors.push(error) });
   let closed = false;
   return {
+    cwd,
     session,
     events,
     changes,
@@ -154,9 +156,9 @@ async function ok(pending: Promise<Frame | undefined>): Promise<Frame> {
   return result;
 }
 
-async function waitFor(predicate: () => boolean, label: string, timeoutMs = 10000): Promise<void> {
+async function waitFor(predicate: () => boolean | Promise<boolean>, label: string, timeoutMs = 10000): Promise<void> {
   const deadline = Date.now() + timeoutMs;
-  while (!predicate()) {
+  while (!(await predicate())) {
     if (Date.now() > deadline) throw new Error(`timed out waiting for ${label}`);
     await new Promise((resolveDelay) => setTimeout(resolveDelay, 10));
   }
@@ -265,6 +267,13 @@ void describe('compiled host interface through the Pi SDK', { concurrency: false
       const all = await ok(client.call('stop_all', { taskIds: [rerunId, printed] }));
       assert.equal(all['stopped'], 1);
       assert.equal(all['alreadyTerminal'], 1);
+      // stop_all settles terminal waiters before notification-state persistence.
+      // Keep this fixture's files alive until its notification receipt is durable.
+      const metadataPath = join(h.cwd, String(field(rerun['task'], 'outputPath')).replace(/\.output$/u, '.json'));
+      await waitFor(async () => {
+        const metadata: unknown = JSON.parse(await readFile(metadataPath, 'utf8'));
+        return field(metadata, 'notified') === true;
+      }, 'rerun notification metadata');
       assert.deepEqual(h.errors, []);
     } finally {
       await h.close();

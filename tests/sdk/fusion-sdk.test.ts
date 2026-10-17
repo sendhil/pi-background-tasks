@@ -7,6 +7,7 @@ import { tmpdir } from 'node:os';
 import type { AssistantMessage, UserMessage } from '@earendil-works/pi-ai';
 import {
   ModelRuntime,
+  initTheme,
   createAgentSession,
   createEventBus,
   DefaultResourceLoader,
@@ -1143,6 +1144,7 @@ void describe('fusion SDK integration', { concurrency: false }, () => {
     if (skipWin32FusionChildPathFixture(t)) return;
     const h = await harness();
     try {
+      initTheme('dark', false);
       const originalUi = baseUi(h.session);
       h.session.extensionRunner.setUIContext({
         ...originalUi,
@@ -1166,15 +1168,11 @@ void describe('fusion SDK integration', { concurrency: false }, () => {
           Promise.resolve(factory(fakeTui(), makeTheme(), fakeKeybindings(), resolvePromise))
             .then((component: Component & { dispose?(): void }) => {
               component.handleInput?.('\r');
-              component.handleInput?.('a');
-              component.handleInput?.('l');
-              component.handleInput?.('t');
+              for (const character of 'pi-bg-fusion/alt-model') component.handleInput?.(character);
               component.handleInput?.('\r');
               component.handleInput?.('\x1b[B');
               component.handleInput?.('\r');
-              component.handleInput?.('a');
-              component.handleInput?.('l');
-              component.handleInput?.('t');
+              for (const character of 'pi-bg-fusion/alt-model') component.handleInput?.(character);
               component.handleInput?.('\r');
               component.handleInput?.('s');
             })

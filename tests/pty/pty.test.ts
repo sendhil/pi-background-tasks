@@ -7,10 +7,12 @@ import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { isolatedTestEnv, stripAnsi } from '../helpers/normalize.js';
 import { installFusionFakePi } from '../helpers/fusion-fake-pi.js';
+import { piLaunchArgv, resolvePiLaunch } from '../../src/core/pi-launch.js';
 
 const extensionPath = resolve('extensions/background-tasks.ts');
 const scriptedProviderPath = resolve('tests/scripted-provider/scripted-provider-extension.ts');
 const expectBin = '/usr/bin/expect';
+const piLaunch = resolvePiLaunch();
 
 const PTY_SKIP_REASON =
   'interactive stdin is not deliverable to a raw-mode Node TUI via /usr/bin/expect on this host ' +
@@ -122,7 +124,7 @@ set env(NPM_CONFIG_CACHE) "/tmp/pi-npm-cache"
 set env(TERM) "xterm-256color"
 ${pathEnv}
 ${optionEnv}
-spawn -noecho /usr/local/bin/pi --offline --no-session --no-extensions ${extensionArgs} --no-skills --no-prompt-templates --no-context-files --no-tools${modelArg}
+spawn -noecho ${[piLaunch.executable, ...piLaunchArgv(piLaunch, [])].map(tclQuote).join(' ')} --offline --no-session --no-extensions ${extensionArgs} --no-skills --no-prompt-templates --no-context-files --no-tools${modelArg}
 expect {
   -re {\\[\\?u} { send "\\033\\[?0u"; exp_continue }
   -re {\\[c} { send "\\033\\[?1;2c"; exp_continue }

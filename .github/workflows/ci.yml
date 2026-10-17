@@ -25,7 +25,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        node: ['22.19.0', '24.x']
+        node: ['22.19.0', '24.22.0']
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -37,8 +37,22 @@ jobs:
           cache: npm
 
       # `npm ci` requires the committed lockfile and installs exactly it.
+      - name: Pin npm
+        run: npm install --global npm@11.19.0
+
       - name: Install dependencies
         run: npm ci
+
+      - name: Pin candidate revision
+        shell: bash
+        run: echo "CANDIDATE=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+
+      - name: Verify committed generated artifacts first
+        shell: bash
+        run: npm run verify:generated -- --candidate "${{ env.CANDIDATE }}" --node-version ${{ matrix.node }} --npm-version 11.19.0
+
+      - name: Verify fork contract
+        run: npm run verify:fork
 
       - name: Typecheck
         run: npm run typecheck
@@ -92,7 +106,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        node: ['22.19.0', '24.x']
+        node: ['22.19.0', '24.22.0']
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -103,8 +117,22 @@ jobs:
           node-version: ${{ matrix.node }}
           cache: npm
 
+      - name: Pin npm
+        run: npm install --global npm@11.19.0
+
       - name: Install dependencies
         run: npm ci
+
+      - name: Pin candidate revision
+        shell: bash
+        run: echo "CANDIDATE=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+
+      - name: Verify committed generated artifacts first
+        shell: bash
+        run: npm run verify:generated -- --candidate "${{ env.CANDIDATE }}" --node-version ${{ matrix.node }} --npm-version 11.19.0
+
+      - name: Verify fork contract
+        run: npm run verify:fork
 
       # Git Bash ships with the Windows runner image and is required by the
       # opt-in PI_BG_SHELL=bash coverage. Locate it explicitly rather than
@@ -130,3 +158,33 @@ jobs:
           PI_SKIP_VERSION_CHECK: '1'
           PI_TELEMETRY: '0'
           CI: '1'
+
+  current-host:
+    name: Pi 1.1.0 Git install · Node ${{ matrix.node }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['22.19.0', '24.22.0']
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - name: Pin npm
+        run: npm install --global npm@11.19.0
+      - run: npm ci
+      - name: Pin candidate revision
+        shell: bash
+        run: echo "CANDIDATE=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+
+      - name: Verify committed generated artifacts first
+        run: npm run verify:generated -- --candidate "${{ env.CANDIDATE }}" --node-version ${{ matrix.node }} --npm-version 11.19.0
+      - name: Verify fork contract
+        run: npm run verify:fork
+      - name: Provision exact current host outside project dependencies
+        run: npm install --prefix "$RUNNER_TEMP/pi-host" --no-audit --no-fund @earendil-works/pi-coding-agent@1.1.0
+      - name: Qualify committed Git installation (default and process)
+        run: npm run test:compat -- --host "$RUNNER_TEMP/pi-host/node_modules/@earendil-works/pi-coding-agent" --candidate "${{ env.CANDIDATE }}"

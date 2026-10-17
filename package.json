@@ -62,9 +62,7 @@
     "smoke": "npm run build:runtime && tsx scripts/smoke.ts",
     "smoke:large-context": "tsx scripts/large-context-smoke.ts",
     "pack:dry-run": "npm pack --dry-run",
-    "lint": "cd ../.. && npm run quality:ts:lint",
-    "format:check": "cd ../.. && npm run quality:ts:format",
-    "test:compat": "npm run build:runtime && tsx scripts/test-compat.ts",
+    "test:compat": "tsx scripts/test-compat.ts",
     "test:pnpm-pack": "npm run build:runtime && node scripts/test-pnpm-pack-install.mjs",
     "test:hook-contract": "tsx --test --test-concurrency=1 tests/scripted-provider/pi-hook-contract.test.ts",
     "docs:generate": "node scripts/docs/generate.mjs",
@@ -75,7 +73,9 @@
     "test:docs": "tsx --test tests/unit/docs-gate.test.ts tests/package/docs-contract.test.ts",
     "payload:check": "npm run build:runtime && node scripts/check-package-payload.mjs",
     "release:check-version": "node scripts/check-release-version.mjs",
-    "prepack": "npm run build:runtime && npm run docs:verify && node scripts/check-package-payload.mjs"
+    "prepack": "npm run build:runtime && npm run docs:verify && node scripts/check-package-payload.mjs",
+    "verify:generated": "node scripts/maintenance/verify-generated.mjs",
+    "verify:fork": "node scripts/maintenance/verify-fork.mjs"
   },
   "pi": {
     "image": "https://raw.githubusercontent.com/ismailsaleekh/pi-background-tasks/main/logo.png",

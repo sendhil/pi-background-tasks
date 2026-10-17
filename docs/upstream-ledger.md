@@ -36,3 +36,16 @@ The upstream PR head observations in the delivery plan are historical, not curre
 For each approved integration append its date, reviewed downstream-main SHA, reviewed upstream-main SHA, previous integrated upstream SHA, selected ordered commit SHAs (if any), original PR/source links, and classification (integrate/already present/superseded/conflicts with policy/needs reproduction). Record authored conflict resolutions, local merge/cherry-pick provenance, required tests and evidence locations, remaining risk, and retirement conditions. Use `cherry-pick -x` for approved selected commits. Never infer that ancestry alone proves an equivalent patch was not already applied.
 
 Do not invent a final candidate self-SHA inside that same commit: reference the resulting immutable candidate and actual executed commands/results in the external handoff. Gate fixes or later ledger edits produce a new candidate and restart qualification. Human acceptance, publication and installation remain separately recorded decisions.
+
+## 2026-10-17 local implementation integration
+
+No upstream PR was merged. The following isolated downstream commits were integrated in order; all are based on the approved implementation starting point. Shared dist/docs are regenerated only after source integration.
+
+| Component source | Local integration commit | Decision / evidence |
+| --- | --- | --- |
+| `85b1375`, `ef300a7` | `98306b5`, `652e386` | Host peer/publication policy and explicit Pi 1.1.0 Git-install harness; component focused metadata/schema/hook evidence retained in session handoff. |
+| `e5f41881a932c9dbd780d5d3dab0d39ae0f13148` | `aefd8f8` | Updater removed; attention footer/theme-native manager; component 79/79 focused, default/process three-case contract 3/3 each. |
+| `36a531edd4407e4a00452b429e5d70a44cf72e80`, `4aeef67ee7ff3ce59a457c773d326e55dbc43f0a` | `36dfd77`, `7c11a87` | Guarded explicit-only skills and tracked Pi artifact allowlist; component 62/62 under default/process. |
+| `fb65cdd7dde7954a67b983376603232a21ceb7bc` | `2a579c4` | Isolated committed-artifact freshness; component 13/13 fixtures under default/process. |
+
+Integration adds CI/release ordering and pinned current-host checks, standalone script cleanup, npm test-harness portability and governed documentation counts. These are implementation records, not certification of an integrated candidate. Advisory stale behavioral receipts are preserved. Node 22/24 candidate results, visual evidence gaps, and any remaining blockers must be read from the exact-SHA external integration report. Issues #36/#38 remain reproduction candidates; no speculative runtime fix was applied. Release naming, publication, canonical remote installation and personal rollout remain unapproved and undone.

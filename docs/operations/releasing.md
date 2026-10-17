@@ -16,14 +16,19 @@ VERSION=$(node -p "require('./package.json').version")
 printf 'pi-background-tasks@%s\n' "$VERSION"
 ```
 
-Current observed standalone git tags stop at `v0.6.0`. Do not advertise or certify a `v1.x` git install tag until that tag exists in the standalone package repository.
+This public personal fork is npm-private. Version 2.6.10 is retained for the implementation candidate, not selected as a new fork release. A downstream prerelease version and immutable matching tag require separate approval; never reuse upstream tags. See [fork policy](../fork-policy.md).
 
 ## Ordinary release checks
 
 Run from the `pi-background-tasks` package root in an isolated environment. These are release-candidate checks, not tag certification:
 
 ```bash
-npm run build:runtime
+# First regenerate intentionally edited source, then commit the candidate.
+# Resolve CANDIDATE once; a gate fix requires a new commit and full restart.
+CANDIDATE=$(git rev-parse HEAD)
+NODE_VERSION=22.19.0 # or the pinned 24.22.0 lane, with npm 11.19.0
+npm run verify:generated -- --candidate "$CANDIDATE" --node-version "$NODE_VERSION" --npm-version 11.19.0
+npm run verify:fork
 npm run typecheck
 npm run test:type-safety
 npm run test:unit
@@ -40,8 +45,7 @@ npm run test:pnpm-pack
 npm run docs:verify
 npm run payload:check
 # On a tag ref only: GITHUB_REF_TYPE=tag GITHUB_REF_NAME=v$VERSION npm run release:check-version
-npm run test:compat
-npm view pi-background-tasks name version --json
+npm run test:compat -- --host "$PI_HOST_ROOT" --candidate "$CANDIDATE"
 ```
 
 `npm run test:full` additionally runs PTY and scripted-provider agent-loop gates. Treat it as a full interactive gate; do not run it for routine docs edits.
@@ -61,12 +65,10 @@ Use `npm pack --dry-run --json` output as the payload source of truth. Verify at
 - production dependencies use registry versions only; no exotic URL/git/file subdependency is shipped;
 - docs/assets/gateway/logo inclusion matches `package.json.files` exactly.
 
-## Tag certification vs npm publishing
+## Tag certification and installation
 
-Separate these activities:
+The CI/release workflows run committed-artifact freshness before build-capable tests, followed by the fork contract. The pinned Pi 1.1.0 host is provisioned outside project SDK dependencies. `test:compat` never prebuilds: provide an installed host root and the immutable candidate SHA. Historical network-fetching compatibility is available only through explicit `--historical`, not an implicit latest-host promise.
 
-1. **npm release candidate:** version comes from `package.json`; run ordinary release checks; inspect pack payload; publish only on operator approval.
-2. **git tag certification:** verify the standalone repo is at the exact release commit, clean, and already has or is about to receive tag `v$VERSION`. `npm run release:check-version` requires an explicit tag ref (`GITHUB_REF_TYPE=tag`, `GITHUB_REF_NAME=v$VERSION`) and never publishes. Tags currently observed stop at `v0.6.0`, so `v$VERSION` is not certified merely because npm has that version.
-3. **post-publish install smoke:** install by `npm:pi-background-tasks@$VERSION` in an isolated Pi agent dir. Use git install smoke only after the corresponding standalone tag exists.
+The current-host gate rehearses Pi's actual Git install from a disposable local bare remote via process-scoped URL rewriting. It proves installation mechanics and committed-byte loading, not GitHub availability. After separate publication approval, repeat the same SHA from the canonical fork remote before any personal settings change.
 
-No auto-publish. No automated push/tag from repair runs unless the operator explicitly asks.
+`release:check-version` requires an explicit matching tag ref and never publishes. Neither successful gates nor a skill invocation authorize pushes, tag creation, npm publication, personal installation, or reload of busy sessions. Keep the previous package declaration for rollback; restore it and launch a fresh session if rollout is later approved.

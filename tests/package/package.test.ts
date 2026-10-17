@@ -14,7 +14,7 @@ import {
 } from 'node:fs';
 import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { spawn, spawnSync } from 'node:child_process';
-import { dirname, join } from 'node:path';
+import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { parseJsonText } from '../../src/core/common.js';
@@ -31,22 +31,7 @@ import {
   prepareFusionValidateArguments,
 } from '../../src/fusion-extension.js';
 
-// npm ships as npm.cmd on Windows, and spawnSync with shell:false does not
-// consult PATHEXT, so spawning the bare name yields status null with no child.
-// Resolving npm's own JavaScript entry and running it through the current Node
-// executable avoids the shim without introducing shell:true, mirroring how
-// production resolves the Pi bin.
-function resolveNpmCli(): string {
-  const nodeDir = dirname(process.execPath);
-  const candidates = [
-    join(nodeDir, '..', 'lib', 'node_modules', 'npm', 'bin', 'npm-cli.js'),
-    join(nodeDir, 'node_modules', 'npm', 'bin', 'npm-cli.js'),
-  ];
-  for (const candidate of candidates) {
-    if (existsSync(candidate)) return candidate;
-  }
-  throw new Error(`cannot resolve npm-cli.js near ${process.execPath}`);
-}
+import { resolveNpmCli } from '../helpers/npm-cli.js';
 
 const npmCli = resolveNpmCli();
 

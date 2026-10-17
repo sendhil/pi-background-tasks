@@ -147,13 +147,13 @@
       "state": "stale-authored-prose"
     },
     {
-      "authored_body_sha256": "sha256:5ec02b307087f2598fe2020200b578520bdae2e90a5e863b93975a226918577f",
+      "authored_body_sha256": "sha256:45046da3b27e8b079f9ee061ec2210372d02f282ecebb87ea91cac4ac8e59a77",
       "covers_sources": [
         "extensions/background-tasks.ts",
         "src/core/config.ts",
-        "src/core/update-check.ts",
         "src/extension.ts",
-        "src/ui/background-tasks-manager.ts"
+        "src/ui/background-tasks-manager.ts",
+        "src/ui/footer-status.ts"
       ],
       "doc_id": "subsystems/host-ui-and-telemetry",
       "rel": "docs/subsystems/host-ui-and-telemetry.md",
@@ -189,7 +189,6 @@
     "command:bg",
     "command:bg-clear",
     "command:bg-tasks",
-    "command:bg-update",
     "command:claude-cache",
     "command:fusion",
     "command:fusion-models",
@@ -285,17 +284,6 @@
       ],
       "mode": "mixed",
       "rel": "docs/commands/bg-clear.md",
-      "review_policy": "contract",
-      "stability": "stable"
-    },
-    "commands/bg-update": {
-      "audience": "user",
-      "covers_sources": [],
-      "covers_surfaces": [
-        "command:bg-update"
-      ],
-      "mode": "mixed",
-      "rel": "docs/commands/bg-update.md",
       "review_policy": "contract",
       "stability": "stable"
     },
@@ -399,6 +387,15 @@
       "mode": "authored",
       "rel": "docs/concepts/context-projection-and-budgeting.md",
       "review_policy": "behavioral",
+      "stability": "evolving"
+    },
+    "fork-policy": {
+      "audience": "maintainer",
+      "covers_sources": [],
+      "covers_surfaces": [],
+      "mode": "authored",
+      "rel": "docs/fork-policy.md",
+      "review_policy": "contract",
       "stability": "evolving"
     },
     "getting-started": {
@@ -608,15 +605,33 @@
       "covers_sources": [
         "extensions/background-tasks.ts",
         "src/core/config.ts",
-        "src/core/update-check.ts",
         "src/extension.ts",
-        "src/ui/background-tasks-manager.ts"
+        "src/ui/background-tasks-manager.ts",
+        "src/ui/footer-status.ts"
       ],
       "covers_surfaces": [],
       "mode": "authored",
       "rel": "docs/subsystems/host-ui-and-telemetry.md",
       "review_policy": "behavioral",
       "stability": "stable"
+    },
+    "superpowers/plans/2026-10-17-background-tasks-baseline": {
+      "audience": "maintainer",
+      "covers_sources": [],
+      "covers_surfaces": [],
+      "mode": "authored",
+      "rel": "docs/superpowers/plans/2026-10-17-background-tasks-baseline.md",
+      "review_policy": "contract",
+      "stability": "evolving"
+    },
+    "superpowers/plans/2026-10-17-personal-fork": {
+      "audience": "maintainer",
+      "covers_sources": [],
+      "covers_surfaces": [],
+      "mode": "authored",
+      "rel": "docs/superpowers/plans/2026-10-17-personal-fork.md",
+      "review_policy": "contract",
+      "stability": "evolving"
     },
     "tools/bg_delegate": {
       "audience": "agent",
@@ -738,6 +753,15 @@
       "rel": "docs/tools/fusion_validate.md",
       "review_policy": "contract",
       "stability": "stable"
+    },
+    "upstream-ledger": {
+      "audience": "maintainer",
+      "covers_sources": [],
+      "covers_surfaces": [],
+      "mode": "authored",
+      "rel": "docs/upstream-ledger.md",
+      "review_policy": "contract",
+      "stability": "evolving"
     }
   },
   "generated_regions": [
@@ -752,12 +776,6 @@
       "generator": "scripts/docs/generate.mjs",
       "name": "command-contract-bg-clear",
       "rel": "docs/commands/bg-clear.md"
-    },
-    {
-      "doc_id": "commands/bg-update",
-      "generator": "scripts/docs/generate.mjs",
-      "name": "command-contract-bg-update",
-      "rel": "docs/commands/bg-update.md"
     },
     {
       "doc_id": "commands/claude-cache",
@@ -949,7 +967,6 @@
     "command:bg",
     "command:bg-clear",
     "command:bg-tasks",
-    "command:bg-update",
     "command:claude-cache",
     "command:fusion",
     "command:fusion-models",
@@ -989,7 +1006,7 @@
         "id": "command:bg",
         "kind": "command",
         "name": "bg",
-        "source": "src/extension.ts:781"
+        "source": "src/extension.ts:705"
       },
       {
         "availability": "always",
@@ -998,7 +1015,7 @@
         "id": "command:bg-clear",
         "kind": "command",
         "name": "bg-clear",
-        "source": "src/extension.ts:824"
+        "source": "src/extension.ts:748"
       },
       {
         "availability": "always",
@@ -1007,16 +1024,7 @@
         "id": "command:bg-tasks",
         "kind": "command",
         "name": "bg-tasks",
-        "source": "src/extension.ts:816"
-      },
-      {
-        "availability": "always",
-        "default_available": true,
-        "description": "Show how to update pi-background-tasks to the latest published version",
-        "id": "command:bg-update",
-        "kind": "command",
-        "name": "bg-update",
-        "source": "src/extension.ts:832"
+        "source": "src/extension.ts:740"
       },
       {
         "availability": "feature:attribution",
@@ -1052,7 +1060,7 @@
         "id": "command:jobs",
         "kind": "command",
         "name": "jobs",
-        "source": "src/extension.ts:881"
+        "source": "src/extension.ts:782"
       },
       {
         "availability": "always",
@@ -1061,7 +1069,7 @@
         "id": "command:kill",
         "kind": "command",
         "name": "kill",
-        "source": "src/extension.ts:925"
+        "source": "src/extension.ts:826"
       },
       {
         "availability": "always",
@@ -1070,7 +1078,7 @@
         "id": "command:logs",
         "kind": "command",
         "name": "logs",
-        "source": "src/extension.ts:894"
+        "source": "src/extension.ts:795"
       },
       {
         "availability": "always",
@@ -1079,7 +1087,7 @@
         "id": "command:tasks",
         "kind": "command",
         "name": "tasks",
-        "source": "src/extension.ts:808"
+        "source": "src/extension.ts:732"
       }
     ],
     "eventbus": [
@@ -1137,7 +1145,7 @@
         "id": "renderer:background-task-notification",
         "kind": "renderer",
         "name": "background-task-notification",
-        "source": "src/extension.ts:657"
+        "source": "src/extension.ts:606"
       },
       {
         "availability": "feature:fusion",
@@ -1156,7 +1164,7 @@
         "id": "shortcut:ctrl+alt+b",
         "kind": "shortcut",
         "name": "ctrl+alt+b",
-        "source": "src/extension.ts:865"
+        "source": "src/extension.ts:766"
       },
       {
         "availability": "always",
@@ -1165,7 +1173,7 @@
         "id": "shortcut:ctrl+alt+c",
         "kind": "shortcut",
         "name": "ctrl+alt+c",
-        "source": "src/extension.ts:873"
+        "source": "src/extension.ts:774"
       },
       {
         "availability": "dock:shift+down",
@@ -1174,7 +1182,7 @@
         "id": "shortcut:shift+down",
         "kind": "shortcut",
         "name": "shift+down",
-        "source": "src/extension.ts:856"
+        "source": "src/extension.ts:757"
       }
     ],
     "tool": [
@@ -1291,7 +1299,7 @@
           ],
           "type": "object"
         },
-        "source": "src/extension.ts:1212"
+        "source": "src/extension.ts:1113"
       },
       {
         "availability": "always",
@@ -1327,7 +1335,7 @@
           ],
           "type": "object"
         },
-        "source": "src/extension.ts:1167"
+        "source": "src/extension.ts:1068"
       },
       {
         "availability": "any(feature:delegate,feature:fusion)",
@@ -1422,7 +1430,7 @@
           ],
           "type": "object"
         },
-        "source": "src/extension.ts:958"
+        "source": "src/extension.ts:859"
       },
       {
         "availability": "feature:attested",
@@ -1485,7 +1493,7 @@
           ],
           "type": "object"
         },
-        "source": "src/extension.ts:1067"
+        "source": "src/extension.ts:968"
       },
       {
         "availability": "always",
@@ -1511,7 +1519,7 @@
           "required": [],
           "type": "object"
         },
-        "source": "src/extension.ts:1136"
+        "source": "src/extension.ts:1037"
       },
       {
         "availability": "feature:fusion",
@@ -2039,9 +2047,6 @@
     "src/core/task-durable.ts": [
       "subsystems/child-launch-durability-and-safety"
     ],
-    "src/core/update-check.ts": [
-      "subsystems/host-ui-and-telemetry"
-    ],
     "src/core/windows-taskkill.ts": [
       "subsystems/background-task-runtime"
     ],
@@ -2063,6 +2068,9 @@
     "src/ui/background-tasks-manager.ts": [
       "subsystems/host-ui-and-telemetry"
     ],
+    "src/ui/footer-status.ts": [
+      "subsystems/host-ui-and-telemetry"
+    ],
     "src/ui/fusion-model-selector.ts": [
       "subsystems/fusion"
     ]
@@ -2076,9 +2084,6 @@
     ],
     "command:bg-tasks": [
       "commands/task-manager"
-    ],
-    "command:bg-update": [
-      "commands/bg-update"
     ],
     "command:claude-cache": [
       "commands/claude-cache"

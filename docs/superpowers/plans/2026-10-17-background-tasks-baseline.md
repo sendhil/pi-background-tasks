@@ -17,7 +17,7 @@ Date: 2026-10-17.
 - Fork and upstream main both at `799182ff65d7040732aea23b2001ea860b688531` (`2.6.10`).
 - Working tree clean before baseline execution.
 - Host Node `26.8.1`, npm `11.19.0`; installed global Pi `1.1.0`.
-- User's configured runtime package remains `npm:pi-background-tasks@2.6.9`; it was not changed.
+- User's configured runtime package remains `npm:pi-background-tasks` pinned at `2.6.9`; it was not changed.
 
 ## Baseline execution
 

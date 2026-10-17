@@ -69,7 +69,6 @@ Every production file under `src/**` and `extensions/**` has exactly one primary
 | `src/core/reload-shell-owner.ts` | [subsystems/background-task-runtime](./subsystems/background-task-runtime.md) |
 | `src/core/shell-policy.ts` | [subsystems/background-task-runtime](./subsystems/background-task-runtime.md) |
 | `src/core/task-durable.ts` | [subsystems/child-launch-durability-and-safety](./subsystems/child-launch-durability-and-safety.md) |
-| `src/core/update-check.ts` | [subsystems/host-ui-and-telemetry](./subsystems/host-ui-and-telemetry.md) |
 | `src/core/windows-taskkill.ts` | [subsystems/background-task-runtime](./subsystems/background-task-runtime.md) |
 | `src/delegate-child-extension.ts` | [subsystems/delegation](./subsystems/delegation.md) |
 | `src/delegate-extension.ts` | [subsystems/delegation](./subsystems/delegation.md) |
@@ -77,6 +76,7 @@ Every production file under `src/**` and `extensions/**` has exactly one primary
 | `src/fusion-child-extension.ts` | [subsystems/fusion](./subsystems/fusion.md) |
 | `src/fusion-extension.ts` | [subsystems/fusion](./subsystems/fusion.md) |
 | `src/ui/background-tasks-manager.ts` | [subsystems/host-ui-and-telemetry](./subsystems/host-ui-and-telemetry.md) |
+| `src/ui/footer-status.ts` | [subsystems/host-ui-and-telemetry](./subsystems/host-ui-and-telemetry.md) |
 | `src/ui/fusion-model-selector.ts` | [subsystems/fusion](./subsystems/fusion.md) |
 
 ## Public surfaces
@@ -86,7 +86,6 @@ Every production file under `src/**` and `extensions/**` has exactly one primary
 | `command:bg` | `always` | yes |
 | `command:bg-clear` | `always` | yes |
 | `command:bg-tasks` | `always` | yes |
-| `command:bg-update` | `always` | yes |
 | `command:claude-cache` | `feature:attribution` | yes |
 | `command:fusion` | `feature:fusion` | yes |
 | `command:fusion-models` | `feature:fusion` | yes |

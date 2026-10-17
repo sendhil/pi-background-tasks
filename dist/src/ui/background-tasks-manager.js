@@ -9,10 +9,6 @@ const STATUS_INTERVAL_MS = 1000;
 const DETAIL_TAIL_BYTES = 128 * 1024;
 const LIST_VISIBLE_ROWS = 14;
 const DETAIL_VISIBLE_OUTPUT_LINES = 12;
-const LIGHT_BLUE_BG = '\x1b[48;2;183;223;255m';
-const LIGHT_BLUE_FG = '\x1b[38;2;11;70;110m';
-const LIGHT_BLUE_BORDER = '\x1b[38;2;83;160;215m';
-const ANSI_RESET = '\x1b[0m';
 function formatTime(timestamp) {
     return new Date(timestamp).toLocaleTimeString();
 }
@@ -38,12 +34,6 @@ function toOutputLines(content) {
 function padAnsi(value, width) {
     return value + ' '.repeat(Math.max(0, width - visibleWidth(value)));
 }
-function lightBlue(value) {
-    return `${LIGHT_BLUE_BG}${LIGHT_BLUE_FG}${value}${ANSI_RESET}`;
-}
-function blueBorder(value) {
-    return `${LIGHT_BLUE_BORDER}${value}${ANSI_RESET}`;
-}
 function statusLabel(status) {
     if (status === 'completed')
         return 'done';
@@ -55,11 +45,11 @@ function statusLabel(status) {
 }
 function statusColor(theme, status, text = statusLabel(status)) {
     if (status === 'completed')
-        return theme.fg('success', text);
+        return theme.fg('dim', text);
     if (status === 'failed')
         return theme.fg('error', text);
     if (status === 'killed')
-        return theme.fg('warning', text);
+        return theme.fg('dim', text);
     return theme.fg('accent', text);
 }
 function taskAge(task, now = Date.now()) {
@@ -512,13 +502,13 @@ export class BackgroundTasksManager {
     }
     frame(title, subtitle, body, footer, width) {
         const inner = Math.max(1, width - 2);
-        const top = blueBorder(`╭${'─'.repeat(inner)}╮`);
-        const bottom = blueBorder(`╰${'─'.repeat(inner)}╯`);
-        const row = (content = '') => `${blueBorder('│')}${padAnsi(truncateToWidth(content, inner), inner)}${blueBorder('│')}`;
-        const header = lightBlue(padAnsi(` ${title}`, inner));
+        const top = this.theme.fg('borderMuted', `╭${'─'.repeat(inner)}╮`);
+        const bottom = this.theme.fg('borderMuted', `╰${'─'.repeat(inner)}╯`);
+        const row = (content = '') => `${this.theme.fg('borderMuted', '│')}${padAnsi(truncateToWidth(content, inner), inner)}${this.theme.fg('borderMuted', '│')}`;
+        const header = this.theme.fg('text', padAnsi(` ${title}`, inner));
         const subtitleLine = subtitle
-            ? lightBlue(padAnsi(` ${subtitle}`, inner))
-            : lightBlue(' '.repeat(inner));
+            ? this.theme.fg('dim', padAnsi(` ${subtitle}`, inner))
+            : ' '.repeat(inner);
         const lines = [top, row(header), row(subtitleLine), row()];
         for (const line of body)
             lines.push(row(line));
@@ -571,16 +561,18 @@ export class BackgroundTasksManager {
                     continue;
                 const index = this.listScroll + i;
                 const selected = index === this.selectedIndex;
-                const pointer = selected ? '›' : ' ';
+                const pointer = selected ? this.theme.fg('accent', '›') : ' ';
                 const unseen = task.status !== 'running' && !this.options.isSeen(task.id);
-                const unreadMark = unseen ? this.theme.fg('warning', '●') : ' ';
+                const unreadMark = unseen
+                    ? this.theme.fg(task.status === 'failed' ? 'error' : 'dim', '●')
+                    : ' ';
                 const rawName = truncateChars(taskDisplayName(task), maxNameWidth);
                 const name = task.status === 'failed'
                     ? this.theme.fg('error', rawName)
                     : task.status === 'killed'
-                        ? this.theme.fg('warning', rawName)
+                        ? this.theme.fg('dim', rawName)
                         : task.status === 'completed'
-                            ? this.theme.fg('success', rawName)
+                            ? this.theme.fg('dim', rawName)
                             : this.theme.fg('text', rawName);
                 const status = statusColor(this.theme, task.status, statusLabel(task.status));
                 const runtime = taskAge(task);
@@ -596,9 +588,7 @@ export class BackgroundTasksManager {
                 const activity = this.activityLabel(task);
                 const activityText = activity ? ` ${this.theme.fg('warning', activity)}` : '';
                 const exit = task.status !== 'running' ? this.theme.fg('dim', formatExitCodeText(task.exitCode)) : '';
-                let row = ` ${pointer} ${unreadMark} ${name} ${this.theme.fg('dim', task.id)} ${this.theme.fg('dim', '·')} ${status}${exit} ${this.theme.fg('dim', `${runtime} ${size}`)}${contextText}${modelText}${tokenText}${toolText}${activityText}`;
-                if (selected)
-                    row = lightBlue(padAnsi(truncateToWidth(row, width - 4), width - 4));
+                const row = ` ${pointer} ${unreadMark} ${name} ${this.theme.fg('dim', task.id)} ${this.theme.fg('dim', '·')} ${status}${exit} ${this.theme.fg('dim', `${runtime} ${size}`)}${contextText}${modelText}${tokenText}${toolText}${activityText}`;
                 body.push(row);
             }
             if (tasks.length > LIST_VISIBLE_ROWS) {
@@ -651,9 +641,9 @@ export class BackgroundTasksManager {
     }
     renderOutputBox(width) {
         const inner = Math.max(1, width - 2);
-        const top = ` ${blueBorder(`╭${'─'.repeat(inner)}╮`)}`;
-        const bottom = ` ${blueBorder(`╰${'─'.repeat(inner)}╯`)}`;
-        const row = (content = '') => ` ${blueBorder('│')}${padAnsi(truncateToWidth(content, inner), inner)}${blueBorder('│')}`;
+        const top = ` ${this.theme.fg('borderMuted', `╭${'─'.repeat(inner)}╮`)}`;
+        const bottom = ` ${this.theme.fg('borderMuted', `╰${'─'.repeat(inner)}╯`)}`;
+        const row = (content = '') => ` ${this.theme.fg('borderMuted', '│')}${padAnsi(truncateToWidth(content, inner), inner)}${this.theme.fg('borderMuted', '│')}`;
         const lines = [top];
         if (this.tailError) {
             lines.push(row(this.theme.fg('error', this.tailError)));

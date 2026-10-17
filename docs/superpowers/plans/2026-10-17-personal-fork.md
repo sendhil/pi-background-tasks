@@ -39,7 +39,7 @@ This is an investigation-backed delivery/design plan, not a claim that every can
 | License | ISC; retain LICENSE and third-party notices |
 | Local project directory | Initially contained `.pi/`, but no checkout or `.git` directory |
 | Inspection checkout | `/tmp/pi-background-tasks-investigation`; no live plugin code edited |
-| Configured installed source | `npm:pi-background-tasks@2.6.9` in personal Pi settings |
+| Configured installed source | `npm:pi-background-tasks` pinned at `2.6.9` in personal Pi settings |
 | Installed Pi package | `1.1.0` |
 | Investigation Node/npm | Node `26.8.1`, npm `11.19.0`; not the upstream Node 22/24 CI matrix |
 | Current feature selection | Inherited `PI_BG_FEATURES=process` |
@@ -292,7 +292,7 @@ Use deterministic local Git fixtures to test scripts: clean divergence, wrong re
 - [ ] Test the normal process-only profile and the default/full profile where those capabilities remain supported. Verify actual compatibility with the installed Pi 1.1.0, not only the development SDK.
 - [ ] Test run/finish/fail/kill/logs, notifications with wake on/off, same-process reload survival, task manager navigation, and theme switching.
 - [ ] Choose a downstream semver prerelease (for example `2.6.10-sendhil.1`) before release; certify the exact candidate commit, then create the matching immutable `v${package.version}` tag after all gates pass. Do not reuse/move upstream tags. Existing certification accepts this convention; no new release framework is needed. Publication still requires separate approval.
-- [ ] Back up the relevant settings before replacing `npm:pi-background-tasks@2.6.9` with the approved pinned Git source from `sendhil/pi-background-tasks`. Preserve resource filters and unrelated settings. Avoid simultaneous registrations from npm and Git sources.
+- [ ] Back up the relevant settings before replacing `npm:pi-background-tasks` pinned at `2.6.9` with the approved pinned Git source from `sendhil/pi-background-tasks`. Preserve resource filters and unrelated settings. Avoid simultaneous registrations from npm and Git sources.
 - [ ] Do not reload busy sessions: ordinary tasks can be killed on reload and agent tasks cannot opt into survival. Switch in a fresh session first.
 - [ ] Roll back by restoring the prior package declaration/settings and launching a fresh session. Retain the previous known-good fork tag for subsequent rollbacks.
 

@@ -45,12 +45,8 @@ function isRecord(value: unknown): value is Record<PropertyKey, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function stringValue(value: unknown): string {
-  return String(value);
-}
-
 void describe('TypeBox compatibility', () => {
-  void it('resolves the TypeBox version bundled by the installed Pi, not a private pin', async (t: TestContext) => {
+  void it('checks the locked development TypeBox line separately from actual-host qualification', async (t: TestContext) => {
     const typeboxPackageJson = join(packageRoot, 'node_modules/typebox/package.json');
     if (!existsSync(typeboxPackageJson)) {
       t.skip('local node_modules/typebox is unavailable in this isolated worktree');
@@ -92,25 +88,38 @@ void describe('TypeBox compatibility', () => {
     );
   });
 
-  void it('requires Pi lines that expose the Fusion settlement and provider-request hooks', async () => {
+  void it('declares host peers without claiming a tested runtime version matrix', async () => {
     const manifest = parseJsonText(await readFile(join(packageRoot, 'package.json'), 'utf8'));
     assert.ok(isRecord(manifest));
     const peers = manifest['peerDependencies'];
     assert.ok(isRecord(peers));
-    for (const key of ['@earendil-works/pi-coding-agent', '@earendil-works/pi-tui']) {
-      const declaredRange = stringValue(peers[key]);
-      for (const supported of ['0.81.1', '0.82.1', '0.83.0', '0.84.0']) {
-        assert.ok(
-          declaredRange.includes(supported),
-          `${key} must declare ${supported}: ${declaredRange}`,
-        );
+    for (const key of ['@earendil-works/pi-ai', '@earendil-works/pi-coding-agent', '@earendil-works/pi-tui', 'typebox']) {
+      assert.equal(peers[key], '*', `${key} must be host-provided`);
+      for (const field of ['dependencies', 'optionalDependencies']) {
+        const dependencies: unknown = manifest[field];
+        assert.equal(isRecord(dependencies) ? dependencies[key] : undefined, undefined);
       }
-      assert.equal(
-        declaredRange.includes('0.75.5'),
-        false,
-        `${key} must not claim pre-agent_settled Pi compatibility: ${declaredRange}`,
-      );
+      for (const field of ['bundledDependencies', 'bundleDependencies']) {
+        const bundled: unknown = manifest[field];
+        assert.notEqual(bundled, true);
+        assert.equal(Array.isArray(bundled) && bundled.includes(key), false);
+      }
     }
+  });
+
+  void it('guards npm publication while retaining attribution and compiled public roots', async () => {
+    const manifest = parseJsonText(await readFile(join(packageRoot, 'package.json'), 'utf8'));
+    assert.ok(isRecord(manifest));
+    assert.equal(manifest['private'], true);
+    assert.equal(manifest['publishConfig'], undefined);
+    assert.equal(manifest['version'], '2.6.10');
+    assert.equal(manifest['license'], 'ISC');
+    assert.equal(manifest['author'], 'Ismail <ismailsalikhodjaev@gmail.com>');
+    assert.deepEqual(manifest['repository'], { type: 'git', url: 'git+https://github.com/sendhil/pi-background-tasks.git' });
+    assert.deepEqual(manifest['bugs'], { url: 'https://github.com/sendhil/pi-background-tasks/issues' });
+    const pi = manifest['pi'];
+    assert.ok(isRecord(pi));
+    assert.deepEqual(pi['extensions'], ['./dist/extensions/anthropic-attribution.js', './dist/extensions/background-tasks.js']);
   });
 
   void it('uses no TypeBox API removed by the Pi 0.83/0.84 bundled version', async () => {

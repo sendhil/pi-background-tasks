@@ -1,83 +1,59 @@
-# Publishing pi-background-tasks
+# Publishing the personal pi-background-tasks fork
 
-Release checklist for npm publishing and standalone git publishing.
+This repository is the public `sendhil/pi-background-tasks` fork. Its package is
+npm-private (`private: true`): **do not publish it to npm or replace the upstream
+npm package.** Retain upstream author, license and third-party notices.
 
-The release version is always read from `package.json`:
+The package version is authoritative; the immutable Git tag must be exactly
+`v${version}`. Downstream releases use `2.6.10-sendhil.1`-style prerelease versions,
+not upstream tags. Never move or reuse a published tag.
 
-```bash
-# From the pi-background-tasks package root:
-VERSION=$(node -p "require('./package.json').version")
-printf 'pi-background-tasks@%s\n' "$VERSION"
+## Qualification before publication
+
+Follow [release operations](docs/operations/releasing.md) and
+[fork policy](docs/fork-policy.md). In summary:
+
+1. Intentionally update source/version metadata, regenerate `dist` and docs, and
+   commit the candidate. Resolve its full SHA once.
+2. Run `verify:generated` against that commit with exact Node/npm versions before
+   any build-capable test can repair stale committed output.
+3. Run the fork contract, required test/doc/payload gates, and actual Pi 1.1.0
+   Git-install qualification. The isolated local-remote rehearsal proves the
+   installation mechanism, not canonical GitHub availability.
+4. Record exact revisions, executed gates and remaining limitations. Optional
+   strict behavioral-attestation failures must not be hidden or fabricated.
+5. Obtain explicit operator approval to push/tag/install. Do not reload busy Pi
+   sessions. Approval for one release does not authorize later releases.
+
+## Git publication
+
+After approval and qualification, publish only to `origin`
+(`https://github.com/sendhil/pi-background-tasks.git`), using normal fast-forward
+updates and an immutable matching tag. Never push to `upstream` or force-update a
+published ref. Verify the canonical remote tag resolves to the intended commit.
+
+The existing tag certification workflow checks `v${version}` against package
+metadata and never publishes to npm. Its results and the ordinary CI matrix are
+separate evidence from local macOS testing.
+
+## Synchronized installation
+
+After the tag is published, verify an isolated real Pi installation from the
+canonical fork URL, without local URL rewriting. Then replace the old npm entry
+in `claude-config/pi/settings.json` with the approved tag, for example:
+
+```text
+git:github.com/sendhil/pi-background-tasks@v2.6.10-sendhil.1
 ```
 
-Observed standalone git tags currently stop at `v0.6.0`; do **not** advertise a `v$VERSION` git install target until that tag exists in the standalone package repository.
+Do not keep both npm and Git declarations. Check the private settings overlay,
+which merges package arrays, for an old npm source. Update the setup regression
+and documentation with the shared pin; run the configuration repository's tests.
 
-## Preconditions
+On each machine, pull `claude-config`, run `./setup.sh --agent pi`, and start a
+fresh Pi session with `PI_BG_FEATURES=process`. Existing sessions keep their loaded
+extension until restarted; do not reload sessions that own running tasks.
 
-- npm account with publish rights for `pi-background-tasks`.
-- Standalone GitHub repository: `github.com/ismailsaleekh/pi-background-tasks`.
-- Clean worktree and final release commit in the standalone package repository.
-- Frontier model evidence, if any, uses Pi subscription/OAuth channels only; never metered APIs.
-- No automated publish, push, or tag from repair runs unless the operator explicitly requests it.
-
-## Ordinary release checks
-
-```bash
-npm run typecheck
-npm run test:type-safety
-npm run test:unit
-npm run test:sdk
-npm run test:rpc
-npm run test:component
-npm run test:package
-npm run test:hook-contract
-npm run smoke
-npm run smoke:large-context
-npm run docs:verify
-npm run payload:check
-# On a tag ref only: GITHUB_REF_TYPE=tag GITHUB_REF_NAME=v$VERSION npm run release:check-version
-npm run pack:dry-run
-# With pnpm 11.18.0 on PATH:
-npm run test:pnpm-pack
-npm run test:compat
-npm view pi-background-tasks name version --json
-```
-
-`npm run test:full` is the full interactive gate (default gate plus PTY and agent-loop). Run it when certifying full TUI/agent-loop behavior, not for docs-only maintenance.
-
-## Payload verification
-
-Use `npm pack --dry-run --json --ignore-scripts` output as the payload source of truth for payload inspection. Verify that `extensions/`, `src/`, `docs/`, `README.md`, `TESTING.md`, `TEST_PLAN.md`, `PUBLISHING.md`, `BACKGROUND-TASKS-INSTRUCTIONS.md`, root `logo.png`, and `LICENSE` match current `package.json.files`, and that tests/scripts/local `.pi` artifacts/node_modules/nested tarballs are excluded. Pi AI and TypeBox must remain host-provided peers rather than private runtime copies.
-
-## Publish to npm
-
-Only after operator approval:
-
-```bash
-npm login
-npm publish --access public
-```
-
-Post-publish smoke with isolated Pi state:
-
-```bash
-PI_CODING_AGENT_DIR=$(mktemp -d) pi -e npm:pi-background-tasks@$VERSION --offline --no-tools --no-session -p "/jobs"
-pi install npm:pi-background-tasks@$VERSION
-```
-
-## Standalone git tag certification
-
-Pi git package installs treat the repository root as the package root. Do not point Pi at the `ai-pipeline` monorepo root for this package.
-
-Before any git install instructions are published, verify in the standalone repo that tag `v$VERSION` exists and points at the release commit. `npm run release:check-version` requires an explicit tag ref (`GITHUB_REF_TYPE=tag`, `GITHUB_REF_NAME=v$VERSION`) and never publishes. If the tag does not exist, the git channel is not certified for this release.
-
-Git install smoke only after the tag exists:
-
-```bash
-PI_CODING_AGENT_DIR=$(mktemp -d) pi -e git:github.com/ismailsaleekh/pi-background-tasks@v$VERSION --offline --no-tools --no-session -p "/jobs"
-pi install git:github.com/ismailsaleekh/pi-background-tasks@v$VERSION
-```
-
-## pi.dev/packages
-
-The package includes the `pi-package` keyword and a `pi.extensions` manifest. After npm publish, it should be discoverable by pi.dev package indexing. If it does not appear automatically, refresh according to the package-gallery process.
+Keep the previous shared declaration for rollback. Restore it in the durable
+configuration source and rerun setup rather than editing generated settings.
+The maintenance skills are intentionally project-local to this source checkout.

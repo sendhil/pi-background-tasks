@@ -604,8 +604,7 @@ void describe('background EventBus protocol', () => {
         unsubscribeTerminal();
         unsubscribeResponse();
         h.close();
-        await new Promise((resolve) => setTimeout(resolve, 25));
-        await rm(h.root, { recursive: true, force: true });
+        await cleanupRoot(h.root);
       }
     }
 

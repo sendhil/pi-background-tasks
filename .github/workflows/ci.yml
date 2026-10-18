@@ -24,7 +24,8 @@ jobs:
       # Never hide a platform-specific failure behind a faster one.
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        # This personal fork qualifies macOS and Linux; Windows is out of scope.
+        os: [ubuntu-latest, macos-latest]
         node: ['22.19.0', '24.22.0']
     steps:
       - name: Checkout
@@ -49,7 +50,9 @@ jobs:
 
       - name: Verify committed generated artifacts first
         shell: bash
-        run: npm run verify:generated -- --candidate "${{ env.CANDIDATE }}" --node-version ${{ matrix.node }} --npm-version 11.19.0
+        run: >-
+          npm run verify:generated -- --candidate "${{ env.CANDIDATE }}"
+          --node-version ${{ matrix.node }} --npm-version 11.19.0
 
       - name: Verify fork contract
         run: npm run verify:fork
@@ -63,9 +66,8 @@ jobs:
       - name: Type-safety standard
         run: npm run test:type-safety
 
-      # Fails if Windows compatibility work leaks onto macOS/Linux behaviour.
+      # Preserve shell behavior on both supported platforms.
       - name: POSIX invariance
-        if: runner.os != 'Windows'
         run: npx tsx --test tests/unit/posix-invariance.test.ts
 
       # The default gate: unit, SDK, RPC, component, and package suites.
@@ -99,66 +101,6 @@ jobs:
         if: runner.os == 'Linux' && matrix.node == '22.19.0'
         run: npm run test:pnpm-pack
 
-  windows-integration:
-    name: Windows integration · Node ${{ matrix.node }}
-    runs-on: windows-latest
-    timeout-minutes: 30
-    strategy:
-      fail-fast: false
-      matrix:
-        node: ['22.19.0', '24.22.0']
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-
-      - name: Set up Node ${{ matrix.node }}
-        uses: actions/setup-node@v6
-        with:
-          node-version: ${{ matrix.node }}
-          cache: npm
-
-      - name: Pin npm
-        run: npm install --global npm@11.19.0
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Pin candidate revision
-        shell: bash
-        run: echo "CANDIDATE=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
-
-      - name: Verify committed generated artifacts first
-        shell: bash
-        run: npm run verify:generated -- --candidate "${{ env.CANDIDATE }}" --node-version ${{ matrix.node }} --npm-version 11.19.0
-
-      - name: Verify fork contract
-        run: npm run verify:fork
-
-      # Git Bash ships with the Windows runner image and is required by the
-      # opt-in PI_BG_SHELL=bash coverage. Locate it explicitly rather than
-      # assuming a path, and fail loudly if it is absent.
-      - name: Locate Git Bash
-        shell: pwsh
-        run: |
-          $bash = Join-Path $env:ProgramFiles 'Git\bin\bash.exe'
-          if (-not (Test-Path $bash)) {
-            Write-Error "Git Bash not found at $bash"
-            exit 1
-          }
-          "PI_BG_TEST_BASH=$bash" | Out-File -FilePath $env:GITHUB_ENV -Append
-          Write-Host "Git Bash: $bash"
-
-      # Real-Windows behaviour that cannot be proven on POSIX: npm .cmd shim
-      # avoidance, cmd.exe quoting, PATHEXT resolution, process-tree teardown,
-      # and single-handle fsync durability on NTFS.
-      - name: Windows-only integration suite
-        run: npm run test:windows
-        env:
-          PI_OFFLINE: '1'
-          PI_SKIP_VERSION_CHECK: '1'
-          PI_TELEMETRY: '0'
-          CI: '1'
-
   current-host:
     name: Pi 1.1.0 Git install · Node ${{ matrix.node }}
     runs-on: ubuntu-latest
@@ -181,10 +123,18 @@ jobs:
         run: echo "CANDIDATE=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
 
       - name: Verify committed generated artifacts first
-        run: npm run verify:generated -- --candidate "${{ env.CANDIDATE }}" --node-version ${{ matrix.node }} --npm-version 11.19.0
+        run: >-
+          npm run verify:generated -- --candidate "${{ env.CANDIDATE }}"
+          --node-version ${{ matrix.node }} --npm-version 11.19.0
       - name: Verify fork contract
         run: npm run verify:fork
       - name: Provision exact current host outside project dependencies
-        run: npm install --prefix "$RUNNER_TEMP/pi-host" --no-audit --no-fund @earendil-works/pi-coding-agent@1.1.0
+        run: >-
+          npm install --prefix "$RUNNER_TEMP/pi-host" --no-audit --no-fund
+          @earendil-works/pi-coding-agent@1.1.0
       - name: Qualify committed Git installation (default and process)
-        run: npm run test:compat -- --host "$RUNNER_TEMP/pi-host/node_modules/@earendil-works/pi-coding-agent" --candidate "${{ env.CANDIDATE }}"
+        run: >-
+          npm run test:compat --
+          --host
+          "$RUNNER_TEMP/pi-host/node_modules/@earendil-works/pi-coding-agent"
+          --candidate "${{ env.CANDIDATE }}"

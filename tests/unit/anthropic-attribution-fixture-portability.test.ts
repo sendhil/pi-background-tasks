@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { realpathSync } from 'node:fs';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -74,9 +75,9 @@ test('resolves the host public entry and its nested pi-ai by package resolution'
   const resolved = await resolveQualificationHost(join(hostRoot, 'lib', 'public-entry.mjs'));
   assert.equal(resolved.host.name, HOST_NAME);
   assert.equal(resolved.host.version, '0.86.0');
-  assert.equal(resolved.host.entryPath, join(hostRoot, 'lib', 'public-entry.mjs'));
+  assert.equal(resolved.host.entryPath, realpathSync(join(hostRoot, 'lib', 'public-entry.mjs')));
   assert.equal(resolved.piAi.name, PI_AI_NAME);
-  assert.equal(resolved.piAi.manifestPath, join(piAiRoot, 'package.json'));
+  assert.equal(resolved.piAi.manifestPath, realpathSync(join(piAiRoot, 'package.json')));
 });
 
 test('resolves a valid hoisted pi-ai dependency without assuming a nested layout', async (t) => {
@@ -97,8 +98,8 @@ test('resolves a valid hoisted pi-ai dependency without assuming a nested layout
   });
 
   const resolved = await resolveQualificationHost(hostRoot);
-  assert.equal(resolved.host.entryPath, join(hostRoot, 'output', 'host.mjs'));
-  assert.equal(resolved.piAi.entryPath, join(piAiRoot, 'output', 'ai.mjs'));
+  assert.equal(resolved.host.entryPath, realpathSync(join(hostRoot, 'output', 'host.mjs')));
+  assert.equal(resolved.piAi.entryPath, realpathSync(join(piAiRoot, 'output', 'ai.mjs')));
 });
 
 test('refuses missing, malformed, wrong-package, and wrong-line hosts before loading APIs', async (t) => {

@@ -223,7 +223,40 @@ void describe('same-process reload shell owner', { concurrency: false }, () => {
     hub.releaseActivation(nextLease);
   });
 
-  void it('does not extend the absolute handoff deadline when a claim aborts', async () => {
+  void it('rearms an early handoff timer without stopping before the absolute deadline', async (t) => {
+    t.mock.timers.enable({ apis: ['setTimeout'] });
+    let now = 1000;
+    let nonce = 0;
+    const stops: string[] = [];
+    const hub = createReloadShellOwnerHubForTests({
+      now: () => now,
+      handoffTimeoutMs: 20,
+      randomNonce: () => String(++nonce).padStart(32, '0'),
+      logger: { error() {} },
+    });
+    const identity = makeReloadShellIdentity('early-deadline', realpathSync('/tmp'));
+    const claim = hub.beginActivation(identity, 'startup', 'c'.repeat(32));
+    const lease = hub.commitActivation(claim, adapter('c'.repeat(32), []));
+    const execution = fakeExecution('owner-early-deadline', (kind) => stops.push(kind));
+    hub.registerExecution(lease, execution);
+    hub.markAdmissionCommitted(lease, execution);
+    hub.beginReloadHandoff(lease);
+
+    // Timer scheduling and Date.now need not reach the deadline simultaneously.
+    now = 1019;
+    t.mock.timers.tick(20);
+    assert.deepEqual(stops, [], 'an early callback must not stop the execution');
+    now = 1020;
+    t.mock.timers.tick(1);
+    assert.deepEqual(stops, ['handoff_expired'], 'an early callback must rearm the remaining deadline');
+    await execution.terminal;
+    t.mock.timers.tick(100);
+    assert.deepEqual(stops, ['handoff_expired'], 'expiry must request stop exactly once');
+    assert.equal(inspectReloadShellOwnerForTests(hub, identity).executions.length, 0);
+  });
+
+  void it('does not extend the absolute handoff deadline when a claim aborts', async (t) => {
+    t.mock.timers.enable({ apis: ['Date', 'setTimeout'], now: 1000 });
     let nonce = 0;
     const hub = createReloadShellOwnerHubForTests({
       handoffTimeoutMs: 45,
@@ -244,20 +277,30 @@ void describe('same-process reload shell owner', { concurrency: false }, () => {
     const retry = hub.beginActivation(identity, 'reload', '5'.repeat(32));
     assert.equal(retry.expiresAt, expiresAt);
     hub.abortActivation(retry, new Error('synthetic retry failure'));
-    await new Promise((resolve) => setTimeout(resolve, 80));
+    t.mock.timers.tick(44);
+    assert.deepEqual(stops, [], 'aborting a claim must not expire the original deadline early');
+    t.mock.timers.tick(1);
+    await execution.terminal;
     assert.deepEqual(stops, ['handoff_expired']);
     assert.equal(execution.task.status, 'failed');
     assert.equal(execution.task.terminalPublicationAbandonReason, 'reload_handoff_expired');
     assert.equal(inspectReloadShellOwnerForTests(hub, identity).executions.length, 0);
   });
 
-  void it('releases an orphaned slot when terminal settlement follows a bounded stop failure', async () => {
+  void it('releases an orphaned slot when terminal settlement follows a bounded stop failure', { timeout: 5000 }, async (t) => {
+    t.mock.timers.enable({ apis: ['Date', 'setTimeout'], now: 1000 });
     const logs: string[] = [];
+    let reportStopFailure: () => void = () => {};
+    const stopFailureReported = new Promise<void>((resolve) => { reportStopFailure = resolve; });
     let nonce = 0;
     const hub = createReloadShellOwnerHubForTests({
       handoffTimeoutMs: 20,
       randomNonce: () => String(++nonce).padStart(32, '0'),
-      logger: { error: (...args: unknown[]) => logs.push(args.map(String).join(' ')) },
+      logger: { error: (...args: unknown[]) => {
+        const message = args.map(String).join(' ');
+        logs.push(message);
+        if (message.includes('could not settle')) reportStopFailure();
+      } },
     });
     const identity = makeReloadShellIdentity('late-terminal-release', realpathSync('/tmp'));
     const claim = hub.beginActivation(identity, 'startup', 'a'.repeat(32));
@@ -326,9 +369,16 @@ void describe('same-process reload shell owner', { concurrency: false }, () => {
     hub.markAdmissionCommitted(lease, execution);
     hub.beginReloadHandoff(lease);
 
-    await new Promise((resolve) => setTimeout(resolve, 130));
-
+    t.mock.timers.tick(20);
     assert.equal(stopCalls, 1, 'deadline cleanup must request one stop');
+    t.mock.timers.tick(10);
+    await stopFailureReported;
+    assert.equal(released, false, 'bounded stop failure must retain ownership until terminal settlement');
+    assert.equal(inspectReloadShellOwnerForTests(hub, identity).executions.length, 1);
+    t.mock.timers.tick(60);
+    await terminal;
+
+    assert.equal(stopCalls, 1, 'late terminal settlement must not request another stop');
     assert.equal(task.status, 'failed');
     assert.equal(execution.phase, 'released');
     assert.equal(released, true);

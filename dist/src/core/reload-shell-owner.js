@@ -206,8 +206,13 @@ export function createReloadShellOwnerHubForTests(dependencies = {}) {
         if (slots.get(slot.identityKey) !== slot)
             return;
         if ((slot.phase !== 'handoff' && slot.phase !== 'claiming') ||
-            slot.expiresAt !== deadline ||
-            now() < deadline) {
+            slot.expiresAt !== deadline) {
+            return;
+        }
+        if (now() < deadline) {
+            // Timer scheduling can arrive before the wall-clock deadline. Retain the
+            // same absolute deadline instead of silently dropping cleanup authority.
+            armHandoffDeadline(slot);
             return;
         }
         slot.phase = 'orphaned';

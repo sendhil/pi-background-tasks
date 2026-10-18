@@ -352,6 +352,7 @@ void describe('Pi launch resolution', () => {
       }
 
       await writeFile(nestedManifest, '{"name":"ignored-by-throw"}\n', 'utf8');
+      const canonicalNestedManifest = realpathSync(nestedManifest);
       assert.throws(
         () =>
           resolvePiLaunch({
@@ -359,7 +360,7 @@ void describe('Pi launch resolution', () => {
             path: join(fixture.root, 'empty-bin'),
             hostScript: cliPath,
             readFile: (path) => {
-              if (path === nestedManifest) throw new Error('fixture permission denied');
+              if (path === canonicalNestedManifest) throw new Error('fixture permission denied');
               return readFileSync(path);
             },
           }),

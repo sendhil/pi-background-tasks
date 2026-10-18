@@ -194,7 +194,7 @@ This generated registry lists production environment-variable references, runtim
 | `pi-background-tasks.host-response.v1` | `src/core/host-protocol.ts:18` |
 | `pi-background-tasks.input-token-calibration.v1` | `src/core/context/token-budget.ts:18` |
 | `pi-background-tasks.reload-shell-owner.v1` | `src/core/reload-shell-owner.ts:36` |
-| `pi-background-tasks.reload-shell.v1` | `src/core/reload-shell-owner.ts:996` |
+| `pi-background-tasks.reload-shell.v1` | `src/core/reload-shell-owner.ts:1001` |
 
 ### Status vocabularies
 

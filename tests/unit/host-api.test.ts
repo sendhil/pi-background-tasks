@@ -198,6 +198,15 @@ async function createHarness(options: { coalesceMs?: number } = {}): Promise<Har
         if (task.status === 'running') await registry.stopTask(task, 'shutdown').catch(() => task);
       }
       installed.close();
+      // Terminal waiters settle before notification metadata finishes writing.
+      // Drain any successor write queued while awaiting the current chain.
+      for (const task of registry.allTasks()) {
+        let pendingWrite: Promise<void> | undefined;
+        do {
+          pendingWrite = task.metadataWriteChain;
+          await pendingWrite;
+        } while (pendingWrite !== task.metadataWriteChain);
+      }
       await rm(root, { recursive: true, force: true });
     },
   };

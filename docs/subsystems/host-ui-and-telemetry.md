@@ -35,7 +35,9 @@ An inherited Nu, fish, csh, or unknown shell is explicitly described as `user-no
 
 ## Footer status
 
-The footer is updated on task changes and once per second while a session is active. It shows only running tasks and unseen failures, in that order: `bg 2 running · 1 failed`. Without either count, only the `background-tasks` status key is cleared. Other extensions' status entries are untouched.
+The footer is derived on task/seen-state changes and checked once per second while a session is active. It shows only running tasks and unseen failures, in that order: `bg 2 running · 1 failed`. Without either count, only the `background-tasks` status key is cleared. Other extensions' status entries are untouched.
+
+Publication compares the complete current-theme rendered bytes (including `undefined` for an empty footer) with the last successful status write. The first synchronization always clears the legacy `background-tasks` widget and applies the current status, even when empty; subsequent equal updates and idle ticks invoke neither setter. Each observed UI-reference transition resets synchronization, including A→B→A wrappers that may share one real footer; fresh context wrappers with the same UI do not reset it. Widget-clear success and status-write success are recorded independently only after their setters return. A failed setter retains the existing error logging/context-clearing policy and is retried after context restoration, without repeating an already successful write. The comparison-only timer preserves opportunities to observe theme and context changes; task/seen changes still update immediately and host-interface revisions remain independent of footer equality. The manager's separate live-detail timer is unchanged.
 
 `src/ui/footer-status.ts` derives display segments from task snapshots and seen IDs without mutating either. The extension applies the current Pi theme: `dim` for the prefix, running count and separators; `error` for the failure count. There is no background fill, successful/stopped badge, version notice, command hint, or focused suffix. There are no footer modes or persisted preferences.
 

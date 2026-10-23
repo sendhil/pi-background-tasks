@@ -16,7 +16,7 @@ VERSION=$(node -p "require('./package.json').version")
 printf 'pi-background-tasks@%s\n' "$VERSION"
 ```
 
-This public personal fork is npm-private. The operator approved the first downstream Git release as `v2.6.10-sendhil.1`; the package version is `2.6.10-sendhil.1`. Use immutable matching downstream tags and never reuse upstream tags. Future publication and installation still require explicit approval. See [fork policy](../fork-policy.md).
+This public personal fork is npm-private. The operator approved the first downstream Git release as `v2.6.10-sendhil.1` and the idle-UI follow-up as `v2.6.10-sendhil.2`. Read the current package version from `package.json`. Use immutable matching downstream tags and never reuse upstream tags. Future publication and installation still require explicit approval. See [fork policy](../fork-policy.md).
 
 ## Ordinary release checks
 

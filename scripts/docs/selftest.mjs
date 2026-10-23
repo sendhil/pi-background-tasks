@@ -36,7 +36,7 @@ function mustThrow(name, fn, pattern) {
 const codeFacts = buildCodeFacts();
 const docsModel = loadDocsModel();
 
-assert.equal(docsModel.docs.length, 46, 'all docs/**/*.md are governed');
+assert.equal(docsModel.docs.length, 47, 'all docs/**/*.md are governed');
 assert.equal(codeFacts.public_surface_ids.length, 32, 'all command/tool/shortcut/renderer/EventBus/workflow surfaces are extracted');
 assert.equal(codeFacts.default_public_surface_ids.length, 31, 'alternate dock shortcut is the only non-default surface');
 assert.ok(codeFacts.public_surface_ids.includes('eventbus:background-task-v1'));

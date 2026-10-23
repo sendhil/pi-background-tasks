@@ -884,14 +884,20 @@ void describe('sdk', () => {
       },
       setActiveTools() {},
     });
+    let statusWrites = 0;
+    let widgetWrites = 0;
     const ctx: JsonObject = {
       cwd,
       sessionManager: { getSessionId: () => 'late-session-start' },
       modelRegistry: { getAll: () => [] },
       model: undefined,
-      hasUI: false,
-      mode: 'print',
-      ui: { setStatus() {}, setWidget() {}, notify() {} },
+      hasUI: true,
+      mode: 'tui',
+      ui: {
+        setStatus() { statusWrites++; },
+        setWidget() { widgetWrites++; },
+        notify() {},
+      },
     };
     const dispatch = async (name: string, event: Record<string, unknown>): Promise<void> => {
       for (const handler of [...(handlers.get(name) ?? [])]) await handler(event, ctx);
@@ -932,6 +938,8 @@ void describe('sdk', () => {
         0,
         'the old session_start continuation must not create a post-shutdown interval',
       );
+      assert.equal(statusWrites, 0, 'late startup must not publish status after closure');
+      assert.equal(widgetWrites, 0, 'late startup must not clear widgets after closure');
     } finally {
       releaseEnsure.resolve(undefined);
       for (const handle of activeIntervals) realClearInterval(handle);
@@ -1708,8 +1716,7 @@ console.log(JSON.stringify({ type: "message_end", message: secondMessage }));
       assert.deepEqual(registry.requests, [], 'startup must not query the package registry');
       assert.deepEqual(fetchCalls, [], 'no default or overridden registry fetch is allowed');
       assert.equal(warnings.mock.callCount(), 0, 'no updater startup warnings');
-      assert.ok(statuses.length > 0, 'startup must actually render the footer');
-      assert.ok(statuses.every((status) => status === undefined));
+      assert.deepEqual(statuses, [undefined], 'startup synchronizes the empty footer once; idle ticks do not repaint');
       assert.deepEqual(notifications, []);
       assert.equal(
         session.extensionRunner.getRegisteredCommands().some(

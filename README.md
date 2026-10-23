@@ -27,7 +27,7 @@
 | Fact | Value |
 | --- | --- |
 | Package | `pi-background-tasks` |
-| Version | `2.6.10-sendhil.1` |
+| Version | `2.6.10-sendhil.2` |
 | Node engine | `>=22.19.0` |
 | Pi entrypoints | `./dist/extensions/anthropic-attribution.js`, `./dist/extensions/background-tasks.js` |
 | Package image | [logo.png](https://raw.githubusercontent.com/ismailsaleekh/pi-background-tasks/main/logo.png) |

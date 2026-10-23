@@ -61,6 +61,7 @@ Generated navigation for every package-local documentation page. This index inte
 | [subsystems/host-ui-and-telemetry](./subsystems/host-ui-and-telemetry.md) | authored | behavioral | stable |
 | [superpowers/plans/2026-10-17-background-tasks-baseline](./superpowers/plans/2026-10-17-background-tasks-baseline.md) | authored | contract | evolving |
 | [superpowers/plans/2026-10-17-personal-fork](./superpowers/plans/2026-10-17-personal-fork.md) | authored | contract | evolving |
+| [superpowers/plans/2026-10-22-idle-ui-dedup](./superpowers/plans/2026-10-22-idle-ui-dedup.md) | authored | contract | evolving |
 | [upstream-ledger](./upstream-ledger.md) | authored | contract | evolving |
 
 ### user
@@ -90,7 +91,7 @@ Generated navigation for every package-local documentation page. This index inte
 - **reference**: [reference/runtime-contracts](./reference/runtime-contracts.md), [reference/shortcuts-and-dock](./reference/shortcuts-and-dock.md)
 - **root**: [choose-a-workflow](./choose-a-workflow.md), [fork-policy](./fork-policy.md), [getting-started](./getting-started.md), [INDEX](./INDEX.md), [read-before-edit](./read-before-edit.md), [upstream-ledger](./upstream-ledger.md)
 - **subsystems**: [subsystems/anthropic-attribution](./subsystems/anthropic-attribution.md), [subsystems/attested-pi-runs](./subsystems/attested-pi-runs.md), [subsystems/background-task-runtime](./subsystems/background-task-runtime.md), [subsystems/child-launch-durability-and-safety](./subsystems/child-launch-durability-and-safety.md), [subsystems/delegation](./subsystems/delegation.md), [subsystems/docs-freshness-gate](./subsystems/docs-freshness-gate.md), [subsystems/fusion](./subsystems/fusion.md), [subsystems/host-ui-and-telemetry](./subsystems/host-ui-and-telemetry.md)
-- **superpowers**: [superpowers/plans/2026-10-17-background-tasks-baseline](./superpowers/plans/2026-10-17-background-tasks-baseline.md), [superpowers/plans/2026-10-17-personal-fork](./superpowers/plans/2026-10-17-personal-fork.md)
+- **superpowers**: [superpowers/plans/2026-10-17-background-tasks-baseline](./superpowers/plans/2026-10-17-background-tasks-baseline.md), [superpowers/plans/2026-10-17-personal-fork](./superpowers/plans/2026-10-17-personal-fork.md), [superpowers/plans/2026-10-22-idle-ui-dedup](./superpowers/plans/2026-10-22-idle-ui-dedup.md)
 - **tools**: [tools/bg_delegate](./tools/bg_delegate.md), [tools/bg_kill](./tools/bg_kill.md), [tools/bg_logs](./tools/bg_logs.md), [tools/bg_result](./tools/bg_result.md), [tools/bg_run](./tools/bg_run.md), [tools/bg_run_pi_attested](./tools/bg_run_pi_attested.md), [tools/bg_status](./tools/bg_status.md), [tools/fusion_investigate](./tools/fusion_investigate.md), [tools/fusion_reason](./tools/fusion_reason.md), [tools/fusion_research](./tools/fusion_research.md), [tools/fusion_validate](./tools/fusion_validate.md)
 
 ## Public surface owners
@@ -134,31 +135,31 @@ Generated navigation for every package-local documentation page. This index inte
 
 | Kind | Name | ID | Availability | Default | Provenance |
 | --- | --- | --- | --- | --- | --- |
-| command | `bg` | `command:bg` | `always` | yes | `src/extension.ts:705` |
-| command | `bg-clear` | `command:bg-clear` | `always` | yes | `src/extension.ts:748` |
-| command | `bg-tasks` | `command:bg-tasks` | `always` | yes | `src/extension.ts:740` |
+| command | `bg` | `command:bg` | `always` | yes | `src/extension.ts:721` |
+| command | `bg-clear` | `command:bg-clear` | `always` | yes | `src/extension.ts:764` |
+| command | `bg-tasks` | `command:bg-tasks` | `always` | yes | `src/extension.ts:756` |
 | command | `claude-cache` | `command:claude-cache` | `feature:attribution` | yes | `src/core/anthropic-attribution.ts:3599` |
 | command | `fusion` | `command:fusion` | `feature:fusion` | yes | `src/fusion-extension.ts:1083` |
 | command | `fusion-models` | `command:fusion-models` | `feature:fusion` | yes | `src/fusion-extension.ts:1123` |
-| command | `jobs` | `command:jobs` | `always` | yes | `src/extension.ts:782` |
-| command | `kill` | `command:kill` | `always` | yes | `src/extension.ts:826` |
-| command | `logs` | `command:logs` | `always` | yes | `src/extension.ts:795` |
-| command | `tasks` | `command:tasks` | `always` | yes | `src/extension.ts:732` |
+| command | `jobs` | `command:jobs` | `always` | yes | `src/extension.ts:798` |
+| command | `kill` | `command:kill` | `always` | yes | `src/extension.ts:842` |
+| command | `logs` | `command:logs` | `always` | yes | `src/extension.ts:811` |
+| command | `tasks` | `command:tasks` | `always` | yes | `src/extension.ts:748` |
 | tool | `bg_delegate` | `tool:bg_delegate` | `feature:delegate` | yes | `src/delegate-extension.ts:500` |
-| tool | `bg_kill` | `tool:bg_kill` | `always` | yes | `src/extension.ts:1113` |
-| tool | `bg_logs` | `tool:bg_logs` | `always` | yes | `src/extension.ts:1068` |
+| tool | `bg_kill` | `tool:bg_kill` | `always` | yes | `src/extension.ts:1129` |
+| tool | `bg_logs` | `tool:bg_logs` | `always` | yes | `src/extension.ts:1084` |
 | tool | `bg_result` | `tool:bg_result` | `any(feature:delegate,feature:fusion)` | yes | `src/delegate-extension.ts:757` |
-| tool | `bg_run` | `tool:bg_run` | `always` | yes | `src/extension.ts:859` |
-| tool | `bg_run_pi_attested` | `tool:bg_run_pi_attested` | `feature:attested` | yes | `src/extension.ts:968` |
-| tool | `bg_status` | `tool:bg_status` | `always` | yes | `src/extension.ts:1037` |
+| tool | `bg_run` | `tool:bg_run` | `always` | yes | `src/extension.ts:875` |
+| tool | `bg_run_pi_attested` | `tool:bg_run_pi_attested` | `feature:attested` | yes | `src/extension.ts:984` |
+| tool | `bg_status` | `tool:bg_status` | `always` | yes | `src/extension.ts:1053` |
 | tool | `fusion_investigate` | `tool:fusion_investigate` | `feature:fusion` | yes | `src/fusion-extension.ts:1305` |
 | tool | `fusion_reason` | `tool:fusion_reason` | `feature:fusion` | yes | `src/fusion-extension.ts:1287` |
 | tool | `fusion_research` | `tool:fusion_research` | `feature:fusion` | yes | `src/fusion-extension.ts:1324` |
 | tool | `fusion_validate` | `tool:fusion_validate` | `feature:fusion` | yes | `src/fusion-extension.ts:1344` |
-| shortcut | `ctrl+alt+b` | `shortcut:ctrl+alt+b` | `dock:ctrl+alt+b` | no | `src/extension.ts:766` |
-| shortcut | `ctrl+alt+c` | `shortcut:ctrl+alt+c` | `always` | yes | `src/extension.ts:774` |
-| shortcut | `shift+down` | `shortcut:shift+down` | `dock:shift+down` | yes | `src/extension.ts:757` |
-| renderer | `background-task-notification` | `renderer:background-task-notification` | `always` | yes | `src/extension.ts:606` |
+| shortcut | `ctrl+alt+b` | `shortcut:ctrl+alt+b` | `dock:ctrl+alt+b` | no | `src/extension.ts:782` |
+| shortcut | `ctrl+alt+c` | `shortcut:ctrl+alt+c` | `always` | yes | `src/extension.ts:790` |
+| shortcut | `shift+down` | `shortcut:shift+down` | `dock:shift+down` | yes | `src/extension.ts:773` |
+| renderer | `background-task-notification` | `renderer:background-task-notification` | `always` | yes | `src/extension.ts:622` |
 | renderer | `fusion-result` | `renderer:fusion-result` | `feature:fusion` | yes | `src/fusion-extension.ts:1067` |
 | eventbus | `background-task-host-v1` | `eventbus:background-task-host-v1` | `always` | yes | `src/core/host-protocol.ts` |
 | eventbus | `background-task-v1` | `eventbus:background-task-v1` | `always` | yes | `src/core/extension-api.ts` |

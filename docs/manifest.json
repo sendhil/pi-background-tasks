@@ -147,7 +147,7 @@
       "state": "stale-authored-prose"
     },
     {
-      "authored_body_sha256": "sha256:45046da3b27e8b079f9ee061ec2210372d02f282ecebb87ea91cac4ac8e59a77",
+      "authored_body_sha256": "sha256:9ed5c05ac09f95a680f95ee2c4238f6bd59e78c63628ab25969994fa14a99052",
       "covers_sources": [
         "extensions/background-tasks.ts",
         "src/core/config.ts",
@@ -633,6 +633,15 @@
       "review_policy": "contract",
       "stability": "evolving"
     },
+    "superpowers/plans/2026-10-22-idle-ui-dedup": {
+      "audience": "maintainer",
+      "covers_sources": [],
+      "covers_surfaces": [],
+      "mode": "authored",
+      "rel": "docs/superpowers/plans/2026-10-22-idle-ui-dedup.md",
+      "review_policy": "contract",
+      "stability": "evolving"
+    },
     "tools/bg_delegate": {
       "audience": "agent",
       "covers_sources": [],
@@ -961,7 +970,7 @@
     "image": "https://raw.githubusercontent.com/ismailsaleekh/pi-background-tasks/main/logo.png",
     "name": "pi-background-tasks",
     "type": "module",
-    "version": "2.6.10-sendhil.1"
+    "version": "2.6.10-sendhil.2"
   },
   "public_surface_ids": [
     "command:bg",
@@ -1006,7 +1015,7 @@
         "id": "command:bg",
         "kind": "command",
         "name": "bg",
-        "source": "src/extension.ts:705"
+        "source": "src/extension.ts:721"
       },
       {
         "availability": "always",
@@ -1015,7 +1024,7 @@
         "id": "command:bg-clear",
         "kind": "command",
         "name": "bg-clear",
-        "source": "src/extension.ts:748"
+        "source": "src/extension.ts:764"
       },
       {
         "availability": "always",
@@ -1024,7 +1033,7 @@
         "id": "command:bg-tasks",
         "kind": "command",
         "name": "bg-tasks",
-        "source": "src/extension.ts:740"
+        "source": "src/extension.ts:756"
       },
       {
         "availability": "feature:attribution",
@@ -1060,7 +1069,7 @@
         "id": "command:jobs",
         "kind": "command",
         "name": "jobs",
-        "source": "src/extension.ts:782"
+        "source": "src/extension.ts:798"
       },
       {
         "availability": "always",
@@ -1069,7 +1078,7 @@
         "id": "command:kill",
         "kind": "command",
         "name": "kill",
-        "source": "src/extension.ts:826"
+        "source": "src/extension.ts:842"
       },
       {
         "availability": "always",
@@ -1078,7 +1087,7 @@
         "id": "command:logs",
         "kind": "command",
         "name": "logs",
-        "source": "src/extension.ts:795"
+        "source": "src/extension.ts:811"
       },
       {
         "availability": "always",
@@ -1087,7 +1096,7 @@
         "id": "command:tasks",
         "kind": "command",
         "name": "tasks",
-        "source": "src/extension.ts:732"
+        "source": "src/extension.ts:748"
       }
     ],
     "eventbus": [
@@ -1145,7 +1154,7 @@
         "id": "renderer:background-task-notification",
         "kind": "renderer",
         "name": "background-task-notification",
-        "source": "src/extension.ts:606"
+        "source": "src/extension.ts:622"
       },
       {
         "availability": "feature:fusion",
@@ -1164,7 +1173,7 @@
         "id": "shortcut:ctrl+alt+b",
         "kind": "shortcut",
         "name": "ctrl+alt+b",
-        "source": "src/extension.ts:766"
+        "source": "src/extension.ts:782"
       },
       {
         "availability": "always",
@@ -1173,7 +1182,7 @@
         "id": "shortcut:ctrl+alt+c",
         "kind": "shortcut",
         "name": "ctrl+alt+c",
-        "source": "src/extension.ts:774"
+        "source": "src/extension.ts:790"
       },
       {
         "availability": "dock:shift+down",
@@ -1182,7 +1191,7 @@
         "id": "shortcut:shift+down",
         "kind": "shortcut",
         "name": "shift+down",
-        "source": "src/extension.ts:757"
+        "source": "src/extension.ts:773"
       }
     ],
     "tool": [
@@ -1299,7 +1308,7 @@
           ],
           "type": "object"
         },
-        "source": "src/extension.ts:1113"
+        "source": "src/extension.ts:1129"
       },
       {
         "availability": "always",
@@ -1335,7 +1344,7 @@
           ],
           "type": "object"
         },
-        "source": "src/extension.ts:1068"
+        "source": "src/extension.ts:1084"
       },
       {
         "availability": "any(feature:delegate,feature:fusion)",
@@ -1430,7 +1439,7 @@
           ],
           "type": "object"
         },
-        "source": "src/extension.ts:859"
+        "source": "src/extension.ts:875"
       },
       {
         "availability": "feature:attested",
@@ -1493,7 +1502,7 @@
           ],
           "type": "object"
         },
-        "source": "src/extension.ts:968"
+        "source": "src/extension.ts:984"
       },
       {
         "availability": "always",
@@ -1519,7 +1528,7 @@
           "required": [],
           "type": "object"
         },
-        "source": "src/extension.ts:1037"
+        "source": "src/extension.ts:1053"
       },
       {
         "availability": "feature:fusion",

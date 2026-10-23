@@ -216,6 +216,10 @@ export default async function backgroundTasksExtension(pi: ExtensionAPI): Promis
   let activationIdentity: ReloadShellIdentityV1 | undefined;
   let pendingActivationClaim: ReloadShellActivationClaimV1 | undefined;
   let statusInterval: NodeJS.Timeout | undefined;
+  let lastObservedUi: ExtensionContext['ui'] | undefined;
+  let widgetSynchronized = false;
+  let statusSynchronized = false;
+  let lastAppliedStatus: string | undefined;
   let disposed = false;
   let shutdownCleanupStarted = false;
   let reloadHandoffFailed = false;
@@ -477,14 +481,26 @@ export default async function backgroundTasksExtension(pi: ExtensionAPI): Promis
     if (registry.isShuttingDown() || !ctx) return;
     try {
       if (!ctx.hasUI) return;
+      const ui = ctx.ui;
+      if (ui !== lastObservedUi) {
+        // Different wrappers can share one footer: A→B→A must synchronize again.
+        lastObservedUi = ui;
+        widgetSynchronized = false;
+        statusSynchronized = false;
+      }
       const segments = footerStatusSegments(registry.allTasks(), seenTaskIds);
-      ctx.ui.setWidget('background-tasks', undefined);
-      ctx.ui.setStatus(
-        'background-tasks',
-        segments.length > 0
-          ? segments.map(({ role, text }) => ctx.ui.theme.fg(role, text)).join('')
-          : undefined,
-      );
+      const status = segments.length > 0
+        ? segments.map(({ role, text }) => ui.theme.fg(role, text)).join('')
+        : undefined;
+      if (!widgetSynchronized) {
+        ui.setWidget('background-tasks', undefined);
+        widgetSynchronized = true;
+      }
+      if (!statusSynchronized || status !== lastAppliedStatus) {
+        ui.setStatus('background-tasks', status);
+        lastAppliedStatus = status;
+        statusSynchronized = true;
+      }
     } catch (error) {
       console.error(
         `[background-tasks] UI update failed: ${error instanceof Error ? error.message : String(error)}`,

@@ -112,7 +112,7 @@ void describe('TypeBox compatibility', () => {
     assert.ok(isRecord(manifest));
     assert.equal(manifest['private'], true);
     assert.equal(manifest['publishConfig'], undefined);
-    assert.equal(manifest['version'], '2.6.10-sendhil.1');
+    assert.equal(manifest['version'], '2.6.10-sendhil.2');
     assert.equal(manifest['license'], 'ISC');
     assert.equal(manifest['author'], 'Ismail <ismailsalikhodjaev@gmail.com>');
     assert.deepEqual(manifest['repository'], { type: 'git', url: 'git+https://github.com/sendhil/pi-background-tasks.git' });

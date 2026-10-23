@@ -43,7 +43,7 @@ canonical fork URL, without local URL rewriting. Then replace the old npm entry
 in `claude-config/pi/settings.json` with the approved tag, for example:
 
 ```text
-git:github.com/sendhil/pi-background-tasks@v2.6.10-sendhil.1
+git:github.com/sendhil/pi-background-tasks@v2.6.10-sendhil.2
 ```
 
 Do not keep both npm and Git declarations. Check the private settings overlay,
